@@ -1,0 +1,141 @@
+/* Calculator Styles */
+body {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  display: flex;
+}
+
+.calc-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* Display */
+.calc-display {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  min-height: 80px;
+}
+
+.calc-history {
+  font-size: 13px;
+  color: var(--text-muted);
+  min-height: 18px;
+  font-family: var(--font-mono);
+}
+
+.calc-current {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Memory Row */
+.calc-mem-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.mem-btn {
+  flex: 1;
+  height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all var(--transition-fast);
+}
+
+.mem-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+/* Scientific Grid */
+.calc-sci-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.btn-sci {
+  height: 34px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent);
+}
+
+/* Keypad Grid */
+.calc-keypad {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.calc-btn {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  font-family: var(--font-mono);
+}
+
+.btn-num {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.btn-num:hover {
+  background: var(--bg-surface-hover);
+  transform: translateY(-1px);
+}
+
+.btn-op {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent);
+}
+
+.btn-op:hover {
+  background: var(--accent-glow);
+}
+
+.btn-equals {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+.btn-equals:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 12px var(--accent-glow);
+}

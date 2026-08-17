@@ -1,0 +1,7 @@
+node_modules/
+*.log
+iso_staging/
+*.iso
+vm_screen*.png
+.DS_Store
+Thumbs.db

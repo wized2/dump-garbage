@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Notes & Markdown Editor</title>
+  <link rel="stylesheet" href="../../css/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="notes-container">
+    <!-- Notes Sidebar -->
+    <div class="notes-sidebar">
+      <div class="notes-sidebar-header">
+        <span style="font-weight:600; font-size:13px;">My Notes</span>
+        <button class="tool-btn" id="btn-new-note" title="New Note"><i data-lucide="plus"></i></button>
+      </div>
+      <div class="notes-search-box">
+        <i data-lucide="search" style="width:14px;height:14px;color:var(--text-muted);"></i>
+        <input type="text" id="note-search" placeholder="Search notes...">
+      </div>
+      <div class="notes-list" id="notes-list">
+        <!-- Injected list of notes -->
+      </div>
+    </div>
+
+    <!-- Note Editor Main Area -->
+    <div class="notes-editor-pane">
+      <!-- Editor Toolbar -->
+      <div class="editor-toolbar">
+        <input type="text" id="note-title" placeholder="Note Title..." autocomplete="off">
+        <div class="format-buttons">
+          <button class="tool-btn" id="btn-bold" title="Bold"><i data-lucide="bold"></i></button>
+          <button class="tool-btn" id="btn-italic" title="Italic"><i data-lucide="italic"></i></button>
+          <button class="tool-btn" id="btn-heading" title="Heading"><i data-lucide="heading"></i></button>
+          <button class="tool-btn" id="btn-list" title="List"><i data-lucide="list"></i></button>
+          <button class="tool-btn" id="btn-code" title="Code"><i data-lucide="code"></i></button>
+          <div class="tool-separator"></div>
+          <button class="tool-btn active" id="btn-toggle-preview" title="Toggle Live Preview"><i data-lucide="columns"></i></button>
+          <button class="tool-btn" id="btn-delete-note" title="Delete Note"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+
+      <!-- Editor Body: Split Editor & Preview -->
+      <div class="editor-split-view" id="editor-split">
+        <textarea id="note-content" placeholder="Write your markdown note here..." spellcheck="false"></textarea>
+        <div id="note-preview" class="markdown-preview"></div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="notes-statusbar">
+        <span id="save-status"><i data-lucide="check" style="width:12px;height:12px;color:var(--success);"></i> Saved</span>
+        <span id="word-count">0 words</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../js/lucide.min.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

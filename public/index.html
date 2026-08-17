@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Endroid OS – Modern Web Operating System</title>
+  <meta name="description" content="Endroid OS: A fast, lightweight, web-powered operating system built on the Linux kernel.">
+
+  <!-- Core Theme & Layout Styles -->
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/desktop.css">
+  <link rel="stylesheet" href="css/wm.css">
+</head>
+<body>
+
+  <!-- Desktop Root Container -->
+  <div id="desktop-root">
+
+    <!-- Dynamic Wallpaper Layer -->
+    <div id="desktop-wallpaper" class="wallpaper-aurora"></div>
+
+    <!-- Night Light Filter Overlay -->
+    <div id="night-light-overlay"></div>
+
+    <!-- Desktop Icons Grid -->
+    <div id="desktop-icons"></div>
+
+    <!-- Rubberband Selection Box -->
+    <div id="rubberband"></div>
+
+    <!-- Window Manager Layer -->
+    <div id="window-layer">
+      <!-- Window Snap Preview Overlay -->
+      <div id="snap-preview"></div>
+    </div>
+
+    <!-- Floating Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Right-Click Desktop Context Menu -->
+    <div id="context-menu">
+      <div class="context-item" data-action="new-folder">
+        <i data-lucide="folder-plus"></i>
+        <span>New Folder</span>
+      </div>
+      <div class="context-item" data-action="new-file">
+        <i data-lucide="file-plus"></i>
+        <span>New Text File</span>
+      </div>
+      <div class="context-separator"></div>
+      <div class="context-item" data-action="terminal">
+        <i data-lucide="terminal"></i>
+        <span>Open Terminal</span>
+      </div>
+      <div class="context-item" data-action="settings">
+        <i data-lucide="settings"></i>
+        <span>Settings & Wallpaper</span>
+      </div>
+      <div class="context-separator"></div>
+      <div class="context-item" data-action="refresh">
+        <i data-lucide="refresh-cw"></i>
+        <span>Refresh Desktop</span>
+      </div>
+    </div>
+
+    <!-- Start Menu / App Launcher -->
+    <div id="start-menu">
+      <div class="start-header">
+        <div class="start-search-box">
+          <i data-lucide="search" style="width:16px;height:16px;color:var(--text-muted);"></i>
+          <input type="text" id="start-search" placeholder="Search apps, files, settings..." autocomplete="off">
+        </div>
+      </div>
+      <div class="start-body" id="start-app-list">
+        <!-- Dynamically injected categories & apps -->
+      </div>
+      <div class="start-footer">
+        <div class="start-user-pill">
+          <div class="start-user-avatar">U</div>
+          <div class="start-user-info">
+            <span class="start-user-name">Endroid User</span>
+            <span class="start-user-status">Online • Linux 6.8.0</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="window-btn" id="btn-start-settings" title="Settings" onclick="Endroid.wm.createWindow({ id:'settings', title:'Settings', icon:'settings', url:'apps/settings/index.html', width:860, height:600 })">
+            <i data-lucide="settings" style="width:16px;height:16px;"></i>
+          </button>
+          <button class="window-btn" id="btn-start-power" title="System Info" onclick="Endroid.taskbar.showToast('Endroid OS', 'Uptime: Active • Fast & Lightweight', 'shield-check')">
+            <i data-lucide="power" style="width:16px;height:16px;"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Volume Popup Drawer -->
+    <div id="volume-popup" class="tray-popup">
+      <div style="font-size:12.5px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+        <span>Output Volume</span>
+        <span style="color:var(--accent);" id="volume-text">80%</span>
+      </div>
+      <div class="volume-slider-row">
+        <i data-lucide="volume-2" style="width:16px;height:16px;color:var(--text-muted);"></i>
+        <input type="range" id="volume-slider" min="0" max="100" value="80" oninput="document.getElementById('volume-text').innerText = this.value + '%'">
+      </div>
+    </div>
+
+    <!-- Notification Center Drawer -->
+    <div id="notification-drawer" class="tray-popup">
+      <div class="drawer-header">
+        <span>Notification Center</span>
+        <button id="btn-clear-notifs" class="window-btn" style="font-size:11px; width:auto; padding:2px 6px;">Clear All</button>
+      </div>
+      <div class="drawer-content" id="drawer-notif-list">
+        <div class="empty-state">No new notifications</div>
+      </div>
+    </div>
+
+    <!-- Bottom Taskbar & Dock -->
+    <div id="taskbar">
+      <!-- Left: App Launcher & Running Windows -->
+      <div class="taskbar-section">
+        <button id="btn-launcher">
+          <i data-lucide="layout-grid" style="color:var(--accent);"></i>
+          <span>Endroid</span>
+        </button>
+        <div id="dock-apps"></div>
+      </div>
+
+      <!-- Right: System Tray -->
+      <div class="taskbar-section">
+        <!-- Theme Mode Toggle -->
+        <button class="tray-item" id="tray-theme" title="Toggle Light/Dark Theme">
+          <i data-lucide="moon" style="width:16px;height:16px;"></i>
+        </button>
+
+        <!-- Wi-Fi / Network Status -->
+        <button class="tray-item" id="tray-network" title="Network: Connected (5G)" onclick="Endroid.taskbar.showToast('Network Status', 'Connected to Endroid-FastNet-5G (1 Gbps)', 'wifi')">
+          <i data-lucide="wifi" style="width:16px;height:16px;"></i>
+        </button>
+
+        <!-- Volume Control -->
+        <button class="tray-item" id="tray-volume" title="Audio Volume">
+          <span class="tray-vol-icon"><i data-lucide="volume-2" style="width:16px;height:16px;"></i></span>
+        </button>
+
+        <!-- Notifications Bell -->
+        <button class="tray-item" id="tray-notif" title="Notifications">
+          <i data-lucide="bell" style="width:16px;height:16px;"></i>
+        </button>
+
+        <!-- System Clock & Date -->
+        <div id="tray-clock" class="tray-item">
+          <span class="time">12:00</span>
+          <span class="date">Aug 17</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Offline Lucide Icons Distribution -->
+  <script src="js/lucide.min.js"></script>
+  <script src="js/icons.js"></script>
+
+  <!-- Core System Runtime Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/wm.js"></script>
+  <script src="js/taskbar.js"></script>
+  <script src="js/desktop.js"></script>
+
+  <!-- System Initialization -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Window Manager
+      const wm = new EndroidWM();
+
+      // Initialize Taskbar & Launcher
+      const taskbar = new EndroidTaskbar(wm);
+
+      // Initialize Desktop surface
+      const desktop = new EndroidDesktop(wm, taskbar);
+
+      window.Endroid = { wm, taskbar, desktop, api: EndroidAPI, icons: EndroidIcons };
+
+      // Initial Lucide Icons Render
+      EndroidIcons.render();
+
+      // Show friendly welcome toast
+      setTimeout(() => {
+        taskbar.showToast(
+          'Endroid OS Ready',
+          'Fast, lightweight web operating system loaded with offline Lucide icons.',
+          'sparkles'
+        );
+      }, 600);
+    });
+  </script>
+</body>
+</html>

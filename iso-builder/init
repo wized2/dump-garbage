@@ -1,0 +1,36 @@
+#!/bin/sh
+# Endroid OS Linux Userspace Init Script
+
+# 1. Mount Essential Kernel Filesystems
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+mount -t tmpfs none /tmp
+
+# 2. Configure Loopback & Network
+ifconfig lo 127.0.0.1 up
+udhcpc -b -i eth0 >/dev/null 2>&1 || true
+
+# 3. Print Banner
+echo "=================================================="
+echo "🌟 Welcome to Endroid OS (Linux 6.8.0-endroid)"
+echo "🚀 Initializing Local API Server & Web Runtime..."
+echo "=================================================="
+
+# 4. Start Endroid Local API Server
+cd /opt/endroid/server
+node index.js &
+SERVER_PID=$!
+
+# Wait for local API server port 8080 to become ready
+sleep 1
+
+# 5. Launch Fullscreen WebView / Wayland Compositor (Cage + WebKit)
+if command -v cage &> /dev/null && command -v cog &> /dev/null; then
+    cage -- cog http://localhost:8080
+elif command -v chromium &> /dev/null; then
+    chromium --kiosk --no-sandbox http://localhost:8080
+else
+    echo "Desktop runtime ready at http://localhost:8080"
+    exec /bin/sh
+fi

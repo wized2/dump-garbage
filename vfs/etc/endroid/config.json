@@ -1,0 +1,27 @@
+{
+  "system": {
+    "hostname": "endroid-node",
+    "version": "1.0.0",
+    "codename": "Endroid Horizon",
+    "kernel": "Linux 6.8.0-endroid-x86_64",
+    "build": "2026.08.1"
+  },
+  "display": {
+    "wallpaper": "cyberpunk"
+  },
+  "theme": {
+    "mode": "dark",
+    "accentColor": "#0ea5e9"
+  },
+  "sound": {
+    "volume": 80,
+    "muted": false,
+    "systemSounds": true
+  },
+  "network": {
+    "wifiEnabled": true,
+    "connectedSSID": "Endroid-FastNet-5G",
+    "ipAddress": "192.168.1.145",
+    "gateway": "192.168.1.1"
+  }
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Endroid Web Browser</title>
+  <link rel="stylesheet" href="../../css/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="browser-container">
+    <!-- Tab Bar -->
+    <div class="browser-tab-bar" id="tab-bar">
+      <div class="tab-list" id="tab-list">
+        <!-- Tabs injected here -->
+      </div>
+      <button class="tab-btn-add" id="btn-new-tab" title="New Tab"><i data-lucide="plus"></i></button>
+    </div>
+
+    <!-- Navigation & Address Bar -->
+    <div class="browser-nav-bar">
+      <div class="nav-buttons">
+        <button class="nav-btn" id="btn-back" title="Back"><i data-lucide="arrow-left"></i></button>
+        <button class="nav-btn" id="btn-forward" title="Forward"><i data-lucide="arrow-right"></i></button>
+        <button class="nav-btn" id="btn-reload" title="Reload"><i data-lucide="rotate-cw"></i></button>
+        <button class="nav-btn" id="btn-home" title="Home"><i data-lucide="home"></i></button>
+      </div>
+
+      <div class="url-bar-container">
+        <i data-lucide="lock" style="width:13px;height:13px;color:var(--success);"></i>
+        <input type="text" id="url-input" placeholder="Search with Endroid or enter URL..." autocomplete="off">
+        <button class="nav-btn" id="btn-go" style="width:24px;height:24px;"><i data-lucide="arrow-right"></i></button>
+      </div>
+
+      <div class="browser-tools">
+        <button class="nav-btn active-shield" id="btn-adblock" title="Ad-Shield: 4 Blocked">
+          <i data-lucide="shield-check" style="color:var(--success);"></i>
+          <span class="badge" id="adblock-badge">4</span>
+        </button>
+        <button class="nav-btn" id="btn-bookmarks" title="Bookmarks"><i data-lucide="bookmark"></i></button>
+      </div>
+    </div>
+
+    <!-- Bookmarks Bar -->
+    <div class="browser-bookmarks-bar" id="bookmarks-bar">
+      <div class="bookmark-item" data-url="about:home"><i data-lucide="compass"></i><span>Endroid Home</span></div>
+      <div class="bookmark-item" data-url="https://kernel.org"><i data-lucide="cpu"></i><span>Linux Kernel</span></div>
+      <div class="bookmark-item" data-url="https://developer.mozilla.org"><i data-lucide="code"></i><span>MDN Web Docs</span></div>
+      <div class="bookmark-item" data-url="https://news.ycombinator.com"><i data-lucide="terminal"></i><span>Hacker News</span></div>
+      <div class="bookmark-item" data-url="https://en.wikipedia.org"><i data-lucide="globe"></i><span>Wikipedia</span></div>
+    </div>
+
+    <!-- Viewport Container -->
+    <div class="browser-viewport" id="viewport-container">
+      <!-- Iframes or Start Pages -->
+    </div>
+  </div>
+
+  <script src="../../js/lucide.min.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

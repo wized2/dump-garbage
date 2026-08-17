@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>File Manager</title>
+  <link rel="stylesheet" href="../../css/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="fm-container">
+    <!-- Top Toolbar -->
+    <div class="fm-toolbar">
+      <div class="fm-nav-controls">
+        <button class="tool-btn" id="btn-back" title="Back"><i data-lucide="arrow-left"></i></button>
+        <button class="tool-btn" id="btn-up" title="Up one folder"><i data-lucide="arrow-up"></i></button>
+        <button class="tool-btn" id="btn-refresh" title="Refresh"><i data-lucide="refresh-cw"></i></button>
+      </div>
+
+      <div class="fm-breadcrumbs" id="breadcrumbs">
+        <!-- Injected Breadcrumb items -->
+      </div>
+
+      <div class="fm-actions">
+        <button class="tool-btn" id="btn-new-folder" title="New Folder"><i data-lucide="folder-plus"></i></button>
+        <button class="tool-btn" id="btn-new-file" title="New File"><i data-lucide="file-plus"></i></button>
+        <div class="tool-separator"></div>
+        <button class="tool-btn active" id="btn-view-grid" title="Grid View"><i data-lucide="grid"></i></button>
+        <button class="tool-btn" id="btn-view-list" title="List View"><i data-lucide="list"></i></button>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="fm-body">
+      <!-- Sidebar / Quick Access -->
+      <div class="fm-sidebar">
+        <div class="sidebar-section-title">Places</div>
+        <div class="sidebar-item active" data-path="/home/user">
+          <i data-lucide="home"></i>
+          <span>Home</span>
+        </div>
+        <div class="sidebar-item" data-path="/home/user/Desktop">
+          <i data-lucide="monitor"></i>
+          <span>Desktop</span>
+        </div>
+        <div class="sidebar-item" data-path="/home/user/Documents">
+          <i data-lucide="file-text"></i>
+          <span>Documents</span>
+        </div>
+        <div class="sidebar-item" data-path="/home/user/Downloads">
+          <i data-lucide="download"></i>
+          <span>Downloads</span>
+        </div>
+        <div class="sidebar-item" data-path="/home/user/Notes">
+          <i data-lucide="book-open"></i>
+          <span>Notes</span>
+        </div>
+        <div class="sidebar-item" data-path="/home/user/Pictures">
+          <i data-lucide="image"></i>
+          <span>Pictures</span>
+        </div>
+
+        <div class="sidebar-section-title" style="margin-top:16px;">System</div>
+        <div class="sidebar-item" data-path="/apps">
+          <i data-lucide="layers"></i>
+          <span>Applications</span>
+        </div>
+        <div class="sidebar-item" data-path="/tmp">
+          <i data-lucide="clock"></i>
+          <span>Temp</span>
+        </div>
+      </div>
+
+      <!-- File Grid / List Container -->
+      <div class="fm-content-pane">
+        <div id="file-container" class="file-grid">
+          <!-- Dynamically populated files -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="fm-statusbar">
+      <span id="status-count">0 items</span>
+      <span id="status-selected">No selection</span>
+      <span id="status-path">/home/user</span>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div id="preview-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span id="preview-title">File Preview</span>
+        <button class="tool-btn" id="btn-close-preview"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" id="preview-body"></div>
+    </div>
+  </div>
+
+  <!-- Offline Lucide and Scripts -->
+  <script src="../../js/lucide.min.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

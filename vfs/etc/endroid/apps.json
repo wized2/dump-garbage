@@ -1,0 +1,160 @@
+{
+  "systemApps": [
+    {
+      "id": "files",
+      "name": "File Manager",
+      "icon": "folder",
+      "category": "System",
+      "description": "Browse, copy, move, and manage files",
+      "isBuiltin": true,
+      "main": "apps/files/index.html",
+      "window": {
+        "width": 880,
+        "height": 580,
+        "minWidth": 640,
+        "minHeight": 400
+      }
+    },
+    {
+      "id": "terminal",
+      "name": "Terminal",
+      "icon": "terminal",
+      "category": "System",
+      "description": "Interactive command-line interface",
+      "isBuiltin": true,
+      "main": "apps/terminal/index.html",
+      "window": {
+        "width": 780,
+        "height": 480,
+        "minWidth": 500,
+        "minHeight": 320
+      }
+    },
+    {
+      "id": "browser",
+      "name": "Web Browser",
+      "icon": "globe",
+      "category": "Internet",
+      "description": "Lightweight web browser with tabs & ad blocker",
+      "isBuiltin": true,
+      "main": "apps/browser/index.html",
+      "window": {
+        "width": 960,
+        "height": 640,
+        "minWidth": 600,
+        "minHeight": 400
+      }
+    },
+    {
+      "id": "notes",
+      "name": "Notes",
+      "icon": "file-text",
+      "category": "Productivity",
+      "description": "Distraction-free Markdown note editor",
+      "isBuiltin": true,
+      "main": "apps/notes/index.html",
+      "window": {
+        "width": 820,
+        "height": 540,
+        "minWidth": 550,
+        "minHeight": 380
+      }
+    },
+    {
+      "id": "calculator",
+      "name": "Calculator",
+      "icon": "calculator",
+      "category": "Utilities",
+      "description": "Scientific calculator with memory and history",
+      "isBuiltin": true,
+      "main": "apps/calculator/index.html",
+      "window": {
+        "width": 380,
+        "height": 560,
+        "resizable": false
+      }
+    },
+    {
+      "id": "installer",
+      "name": "App Installer",
+      "icon": "package",
+      "category": "System",
+      "description": "Install, validate, and manage .epk packages",
+      "isBuiltin": true,
+      "main": "apps/installer/index.html",
+      "window": {
+        "width": 760,
+        "height": 520,
+        "minWidth": 600,
+        "minHeight": 400
+      }
+    },
+    {
+      "id": "settings",
+      "name": "Settings",
+      "icon": "settings",
+      "category": "System",
+      "description": "System preferences, themes, wallpaper, and storage",
+      "isBuiltin": true,
+      "main": "apps/settings/index.html",
+      "window": {
+        "width": 860,
+        "height": 600,
+        "minWidth": 650,
+        "minHeight": 450
+      }
+    }
+  ],
+  "installedApps": [
+    {
+      "id": "retro-snake",
+      "name": "Retro Snake",
+      "version": "1.0.0",
+      "description": "Classic retro arcade snake game with smooth controls and score tracker",
+      "author": "Endroid Games",
+      "icon": "/installed-apps/retro-snake/icon.svg",
+      "iconSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#22c55e\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"6\"/><path d=\"M12 12h.01\"/><path d=\"M17 12h.01\"/><path d=\"M7 12h.01\"/></svg>",
+      "main": "/installed-apps/retro-snake/index.html",
+      "isBuiltin": false,
+      "permissions": [
+        "filesystem.read"
+      ],
+      "window": {
+        "width": 540,
+        "height": 580,
+        "resizable": false
+      },
+      "background": "#090d16",
+      "categories": [
+        "games",
+        "arcade"
+      ],
+      "installedAt": "2026-08-17T05:05:10.325Z"
+    },
+    {
+      "id": "sys-monitor",
+      "name": "System Monitor",
+      "version": "1.0.0",
+      "description": "Live hardware performance meters and memory telemetry",
+      "author": "Endroid Core",
+      "icon": "/installed-apps/sys-monitor/icon.svg",
+      "iconSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#f59e0b\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M22 12h-4l-3 9L9 3l-3 9H2\"/></svg>",
+      "main": "/installed-apps/sys-monitor/index.html",
+      "isBuiltin": false,
+      "permissions": [
+        "system.telemetry"
+      ],
+      "window": {
+        "width": 640,
+        "height": 480,
+        "resizable": true
+      },
+      "background": "#0f172a",
+      "categories": [
+        "system",
+        "utilities"
+      ],
+      "installedAt": "2026-08-17T05:06:58.982Z"
+    }
+  ]
+}

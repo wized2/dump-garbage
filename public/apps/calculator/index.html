@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Calculator</title>
+  <link rel="stylesheet" href="../../css/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="calc-container">
+    <!-- LCD Display -->
+    <div class="calc-display">
+      <div class="calc-history" id="calc-history"></div>
+      <div class="calc-current" id="calc-current">0</div>
+    </div>
+
+    <!-- Mode & Memory Row -->
+    <div class="calc-mem-row">
+      <button class="mem-btn" data-action="mc">MC</button>
+      <button class="mem-btn" data-action="mr">MR</button>
+      <button class="mem-btn" data-action="m-plus">M+</button>
+      <button class="mem-btn" data-action="m-minus">M-</button>
+      <button class="mem-btn" id="btn-toggle-sci"><i data-lucide="sparkles" style="width:12px;height:12px;"></i> Sci</button>
+    </div>
+
+    <!-- Scientific Panel (Collapsible) -->
+    <div class="calc-sci-grid" id="sci-grid" style="display:none;">
+      <button class="calc-btn btn-sci" data-fn="sin">sin</button>
+      <button class="calc-btn btn-sci" data-fn="cos">cos</button>
+      <button class="calc-btn btn-sci" data-fn="tan">tan</button>
+      <button class="calc-btn btn-sci" data-fn="log">log</button>
+      <button class="calc-btn btn-sci" data-fn="ln">ln</button>
+      <button class="calc-btn btn-sci" data-fn="sqrt">√</button>
+      <button class="calc-btn btn-sci" data-fn="pow">xʸ</button>
+      <button class="calc-btn btn-sci" data-val="Math.PI">π</button>
+      <button class="calc-btn btn-sci" data-val="Math.E">e</button>
+      <button class="calc-btn btn-sci" data-val="^2">x²</button>
+    </div>
+
+    <!-- Main Keypad Grid -->
+    <div class="calc-keypad">
+      <button class="calc-btn btn-op" data-action="clear">C</button>
+      <button class="calc-btn btn-op" data-action="paren-open">(</button>
+      <button class="calc-btn btn-op" data-action="paren-close">)</button>
+      <button class="calc-btn btn-op" data-action="divide">÷</button>
+
+      <button class="calc-btn btn-num" data-val="7">7</button>
+      <button class="calc-btn btn-num" data-val="8">8</button>
+      <button class="calc-btn btn-num" data-val="9">9</button>
+      <button class="calc-btn btn-op" data-action="multiply">×</button>
+
+      <button class="calc-btn btn-num" data-val="4">4</button>
+      <button class="calc-btn btn-num" data-val="5">5</button>
+      <button class="calc-btn btn-num" data-val="6">6</button>
+      <button class="calc-btn btn-op" data-action="subtract">−</button>
+
+      <button class="calc-btn btn-num" data-val="1">1</button>
+      <button class="calc-btn btn-num" data-val="2">2</button>
+      <button class="calc-btn btn-num" data-val="3">3</button>
+      <button class="calc-btn btn-op" data-action="add">+</button>
+
+      <button class="calc-btn btn-op" data-action="negate">±</button>
+      <button class="calc-btn btn-num" data-val="0">0</button>
+      <button class="calc-btn btn-num" data-val=".">.</button>
+      <button class="calc-btn btn-equals" data-action="equals">=</button>
+    </div>
+  </div>
+
+  <script src="../../js/lucide.min.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

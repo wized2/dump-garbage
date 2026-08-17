@@ -1,0 +1,140 @@
+/* Terminal Styles */
+body {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  background: #090d16;
+  color: #f8fafc;
+}
+
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.terminal-bar {
+  height: 34px;
+  padding: 0 10px;
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.terminal-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.terminal-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.term-select {
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  outline: none;
+}
+
+.term-btn {
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.term-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.terminal-screen {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.45;
+  cursor: text;
+}
+
+#terminal-output {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal-prompt-line {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.prompt-label {
+  color: #38bdf8;
+  font-weight: 600;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+#terminal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: inherit;
+  caret-color: #38bdf8;
+}
+
+/* Color Themes */
+body.theme-matrix {
+  background: #051408;
+  color: #22c55e;
+}
+body.theme-matrix .prompt-label { color: #4ade80; }
+body.theme-matrix #terminal-input { caret-color: #22c55e; }
+
+body.theme-amber {
+  background: #140c03;
+  color: #fbbf24;
+}
+body.theme-amber .prompt-label { color: #f59e0b; }
+body.theme-amber #terminal-input { caret-color: #fbbf24; }
+
+body.theme-cyber {
+  background: #0f051d;
+  color: #f43f5e;
+}
+body.theme-cyber .prompt-label { color: #38bdf8; }
+body.theme-cyber #terminal-input { caret-color: #f43f5e; }
+
+/* ANSI Color Classes */
+.ansi-bold { font-weight: bold; }
+.ansi-red { color: #ef4444; }
+.ansi-green { color: #22c55e; }
+.ansi-yellow { color: #f59e0b; }
+.ansi-blue { color: #3b82f6; }
+.ansi-magenta { color: #d946ef; }
+.ansi-cyan { color: #06b6d4; }
+.ansi-white { color: #f8fafc; }

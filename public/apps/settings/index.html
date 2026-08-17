@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings</title>
+  <link rel="stylesheet" href="../../css/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="settings-container">
+    <!-- Sidebar Navigation -->
+    <div class="settings-sidebar">
+      <div class="settings-user-card">
+        <div class="user-avatar">U</div>
+        <div class="user-info">
+          <div class="user-name">Endroid User</div>
+          <div class="user-role">Administrator</div>
+        </div>
+      </div>
+
+      <div class="nav-list">
+        <button class="nav-item active" data-tab="display"><i data-lucide="monitor"></i> Display & Wallpaper</button>
+        <button class="nav-item" data-tab="appearance"><i data-lucide="palette"></i> Appearance & Themes</button>
+        <button class="nav-item" data-tab="sound"><i data-lucide="volume-2"></i> Sound & Audio</button>
+        <button class="nav-item" data-tab="apps"><i data-lucide="layers"></i> Applications</button>
+        <button class="nav-item" data-tab="system"><i data-lucide="info"></i> About & System Specs</button>
+      </div>
+    </div>
+
+    <!-- Main Content Panes -->
+    <div class="settings-content">
+      <!-- 1. Display & Wallpaper -->
+      <div class="settings-pane active" id="pane-display">
+        <h2 class="pane-title">Display & Wallpaper</h2>
+
+        <div class="setting-group">
+          <div class="group-title">Wallpaper Selection</div>
+          <div class="wallpaper-grid">
+            <div class="wallpaper-card active" data-wp="aurora">
+              <div class="wp-thumb wallpaper-aurora"></div>
+              <span>Aurora Glow</span>
+            </div>
+            <div class="wallpaper-card" data-wp="sunset">
+              <div class="wp-thumb wallpaper-sunset"></div>
+              <span>Sunset Nebula</span>
+            </div>
+            <div class="wallpaper-card" data-wp="emerald">
+              <div class="wp-thumb wallpaper-emerald"></div>
+              <span>Emerald Matrix</span>
+            </div>
+            <div class="wallpaper-card" data-wp="cyberpunk">
+              <div class="wp-thumb wallpaper-cyberpunk"></div>
+              <span>Cyber Horizon</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-row">
+            <div>
+              <div class="row-label">Night Light Mode</div>
+              <div class="row-desc">Filters blue light to reduce eye strain</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="chk-nightmode">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Appearance & Themes -->
+      <div class="settings-pane" id="pane-appearance">
+        <h2 class="pane-title">Appearance & Themes</h2>
+
+        <div class="setting-group">
+          <div class="group-title">Color Mode</div>
+          <div class="theme-mode-row">
+            <div class="theme-card active" data-mode="dark">
+              <i data-lucide="moon" style="width:24px;height:24px;"></i>
+              <span>Dark Acrylic</span>
+            </div>
+            <div class="theme-card" data-mode="light">
+              <i data-lucide="sun" style="width:24px;height:24px;"></i>
+              <span>Light Clean</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="group-title">Accent Color</div>
+          <div class="accent-color-row">
+            <div class="color-dot active" style="background:#0ea5e9;" data-color="#0ea5e9"></div>
+            <div class="color-dot" style="background:#10b981;" data-color="#10b981"></div>
+            <div class="color-dot" style="background:#8b5cf6;" data-color="#8b5cf6"></div>
+            <div class="color-dot" style="background:#f43f5e;" data-color="#f43f5e"></div>
+            <div class="color-dot" style="background:#f59e0b;" data-color="#f59e0b"></div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-row">
+            <div>
+              <div class="row-label">Reduce Motion</div>
+              <div class="row-desc">Disable complex window animations for accessibility</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="chk-reducemotion">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Sound & Audio -->
+      <div class="settings-pane" id="pane-sound">
+        <h2 class="pane-title">Sound & Audio</h2>
+
+        <div class="setting-group">
+          <div class="setting-row">
+            <div style="flex:1;">
+              <div class="row-label">Master Volume</div>
+              <div class="row-desc">System-wide audio output level</div>
+            </div>
+            <input type="range" id="sound-volume-slider" min="0" max="100" value="80" style="width:200px; accent-color:var(--accent);">
+          </div>
+
+          <div class="setting-row" style="margin-top:12px;">
+            <div>
+              <div class="row-label">System Audio Effects</div>
+              <div class="row-desc">Play feedback sounds on notifications and window actions</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="chk-sounds" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Applications -->
+      <div class="settings-pane" id="pane-apps">
+        <h2 class="pane-title">Installed Applications</h2>
+        <div id="settings-app-list" class="app-settings-list"></div>
+      </div>
+
+      <!-- 5. System Specs & About -->
+      <div class="settings-pane" id="pane-system">
+        <h2 class="pane-title">About Endroid OS</h2>
+
+        <div class="specs-hero">
+          <div class="specs-logo">
+            <i data-lucide="cpu" style="width:40px;height:40px;color:var(--accent);"></i>
+          </div>
+          <div>
+            <h3 style="font-size:18px; margin:0 0 4px;">Endroid OS 1.0 (Horizon Edition)</h3>
+            <p style="color:var(--text-secondary); font-size:12.5px;">Lightweight web-powered operating system built on the Linux kernel</p>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="spec-item"><span>Kernel Version</span><strong id="spec-kernel">Linux 6.8.0-endroid-x86_64</strong></div>
+          <div class="spec-item"><span>Architecture</span><strong id="spec-arch">x86_64 / aarch64</strong></div>
+          <div class="spec-item"><span>System Memory</span><strong id="spec-mem">142 MB / 500 MB (28%)</strong></div>
+          <div class="spec-item"><span>Storage Used</span><strong id="spec-storage">142 MB / 500 MB</strong></div>
+          <div class="spec-item"><span>System Uptime</span><strong id="spec-uptime">Active</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../js/lucide.min.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

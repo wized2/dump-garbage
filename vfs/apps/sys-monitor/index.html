@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>System Monitor</title>
+  <style>
+    body { margin: 0; background: #090d16; color: #f8fafc; font-family: -apple-system, sans-serif; padding: 20px; }
+    h2 { margin-top: 0; color: #f59e0b; }
+    .card { background: #1e293b; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+    .meter { height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; overflow: hidden; margin-top: 8px; }
+    .fill { height: 100%; width: 28%; background: #0ea5e9; transition: width 0.5s ease; }
+  </style>
+</head>
+<body>
+  <h2>System Resource Monitor</h2>
+  <div class="card">
+    <div style="display:flex; justify-content:space-between;">
+      <span>CPU Utilization</span>
+      <span id="cpu-text">4.2%</span>
+    </div>
+    <div class="meter"><div class="fill" id="cpu-fill" style="width: 4.2%; background:#10b981;"></div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex; justify-content:space-between;">
+      <span>Memory Usage</span>
+      <span>142 MB / 500 MB (28%)</span>
+    </div>
+    <div class="meter"><div class="fill" style="width: 28%;"></div></div>
+  </div>
+  <script>
+    setInterval(() => {
+      const cpu = (Math.random() * 8 + 2).toFixed(1);
+      document.getElementById('cpu-text').innerText = cpu + '%';
+      document.getElementById('cpu-fill').style.width = cpu + '%';
+    }, 1500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://endroid.os/schema/manifest-v1.json",
+  "id": "sys-monitor",
+  "name": "System Monitor",
+  "version": "1.0.0",
+  "description": "Live hardware performance meters and memory telemetry",
+  "author": "Endroid Core",
+  "icon": "icon.svg",
+  "main": "index.html",
+  "permissions": [
+    "system.telemetry"
+  ],
+  "window": {
+    "width": 640,
+    "height": 480,
+    "resizable": true
+  },
+  "background": "#0f172a",
+  "categories": [
+    "system",
+    "utilities"
+  ]
+}

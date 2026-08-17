@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terminal</title>
+  <link rel="stylesheet" href="../../css/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-default">
+  <div class="terminal-container">
+    <!-- Terminal Header Bar -->
+    <div class="terminal-bar">
+      <div class="terminal-info">
+        <i data-lucide="terminal" style="width:14px;height:14px;"></i>
+        <span>user@endroid-node: /home/user</span>
+      </div>
+      <div class="terminal-controls">
+        <select id="theme-selector" class="term-select">
+          <option value="theme-default">Acrylic Dark</option>
+          <option value="theme-matrix">Matrix Green</option>
+          <option value="theme-amber">Amber CRT</option>
+          <option value="theme-cyber">Cyberpunk</option>
+        </select>
+        <button id="btn-font-dec" class="term-btn" title="Decrease Font">-</button>
+        <button id="btn-font-inc" class="term-btn" title="Increase Font">+</button>
+        <button id="btn-clear" class="term-btn" title="Clear Screen"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
+      </div>
+    </div>
+
+    <!-- Terminal Output Screen -->
+    <div id="terminal-screen" class="terminal-screen">
+      <div id="terminal-output"></div>
+      <div class="terminal-prompt-line">
+        <span id="prompt-label" class="prompt-label">user@endroid:~$ </span>
+        <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" autofocus>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../js/lucide.min.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

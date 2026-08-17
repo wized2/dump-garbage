@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>App Installer & Package Manager</title>
+  <link rel="stylesheet" href="../../css/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="installer-container">
+    <!-- Header & Navigation Tabs -->
+    <div class="installer-header">
+      <div class="installer-brand">
+        <i data-lucide="package" style="color:var(--accent);"></i>
+        <span>Endroid Package Manager (.epk)</span>
+      </div>
+      <div class="installer-tabs">
+        <button class="tab-btn active" data-tab="install"><i data-lucide="upload"></i> Install Package</button>
+        <button class="tab-btn" data-tab="installed"><i data-lucide="check-circle"></i> Installed Apps</button>
+        <button class="tab-btn" data-tab="store"><i data-lucide="shopping-bag"></i> App Store</button>
+      </div>
+    </div>
+
+    <!-- Main Content Panels -->
+    <div class="installer-body">
+      <!-- 1. Install Package Tab -->
+      <div class="tab-pane active" id="pane-install">
+        <!-- Dropzone -->
+        <div class="drop-zone" id="drop-zone">
+          <i data-lucide="file-archive" style="width:48px;height:48px;color:var(--accent);"></i>
+          <div class="drop-title">Drop an .epk package here</div>
+          <div class="drop-subtitle">or click to browse local files</div>
+          <input type="file" id="file-input" accept=".epk,.zip" style="display:none;">
+        </div>
+
+        <!-- Validation & Installation Card -->
+        <div class="package-card" id="package-card" style="display:none;">
+          <div class="pkg-header">
+            <div class="pkg-icon-wrap" id="pkg-icon"></div>
+            <div class="pkg-info">
+              <h2 id="pkg-name">Application Name</h2>
+              <div class="pkg-meta">
+                <span id="pkg-version">v1.0.0</span> • <span id="pkg-author">Author</span> • <span id="pkg-cat">Category</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="pkg-desc" id="pkg-desc">Package description here...</p>
+
+          <!-- Validation Checklist -->
+          <div class="validation-box">
+            <div class="val-title">Package Verification:</div>
+            <div class="val-item" id="val-zip"><i data-lucide="check" style="color:var(--success);"></i> Archive structure verified</div>
+            <div class="val-item" id="val-manifest"><i data-lucide="check" style="color:var(--success);"></i> manifest.json schema valid</div>
+            <div class="val-item" id="val-entry"><i data-lucide="check" style="color:var(--success);"></i> Entry point (index.html) confirmed</div>
+            <div class="val-item" id="val-perms"><i data-lucide="shield" style="color:var(--info);"></i> Permissions: <span id="pkg-perms">filesystem.read, network</span></div>
+          </div>
+
+          <div class="pkg-actions">
+            <button class="btn-primary" id="btn-do-install">
+              <i data-lucide="download"></i> Install Application
+            </button>
+            <button class="btn-secondary" id="btn-cancel-install">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Installed Apps Tab -->
+      <div class="tab-pane" id="pane-installed">
+        <div class="installed-list" id="installed-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- 3. App Store Tab -->
+      <div class="tab-pane" id="pane-store">
+        <div class="store-grid" id="store-grid">
+          <!-- Sample Packages Store -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../js/lucide.min.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
