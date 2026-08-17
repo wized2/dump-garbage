@@ -2,6 +2,10 @@ node_modules/
 *.log
 iso_staging/
 *.iso
-vm_screen*.png
+*.png
+*.ova
+iso-builder/iso_staging/
+iso-builder/busybox-static
+iso-builder/boot/tce/
 .DS_Store
 Thumbs.db

@@ -1,14 +1,7 @@
-$ErrorActionPreference = "Continue"
-
 $vboxPath = "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
 if (!(Test-Path $vboxPath)) {
     $cmd = Get-Command VBoxManage -ErrorAction SilentlyContinue
-    if ($cmd) {
-        $vboxPath = $cmd.Source
-    } else {
-        Write-Error "VBoxManage.exe not found at $vboxPath"
-        exit 1
-    }
+    if ($cmd) { $vboxPath = $cmd.Source } else { Write-Error "VBoxManage not found"; exit 1 }
 }
 
 $vmName = "EndroidOS"
@@ -18,14 +11,21 @@ Write-Host "=================================================="
 Write-Host "[*] Setting up Endroid OS in VirtualBox..."
 Write-Host "=================================================="
 
-# Check and remove old VM if it exists
-$vms = & "$vboxPath" list vms
-if ($vms -match $vmName) {
-    Write-Host "[*] Stopping existing VM..."
-    & "$vboxPath" controlvm "$vmName" poweroff 2>$null
-    Start-Sleep -Seconds 1
-    Write-Host "[*] Removing old VM definition..."
-    & "$vboxPath" unregistervm "$vmName" --delete 2>$null
+# Force stop and remove any existing VM
+$vms = & "$vboxPath" list vms 2>$null
+if ($vms -match [regex]::Escape($vmName)) {
+    Write-Host "[*] Powering off existing VM..."
+    & "$vboxPath" controlvm "$vmName" poweroff 2>$null | Out-Null
+    Start-Sleep -Seconds 3
+    Write-Host "[*] Removing old VM..."
+    & "$vboxPath" unregistervm "$vmName" --delete 2>$null | Out-Null
+    Start-Sleep -Seconds 2
+}
+
+# Also clean up leftover vbox folder if needed
+$vmFolder = "$env:USERPROFILE\VirtualBox VMs\$vmName"
+if (Test-Path $vmFolder) {
+    Remove-Item -Recurse -Force $vmFolder -ErrorAction SilentlyContinue
 }
 
 # Create VM
@@ -34,7 +34,7 @@ Write-Host "[+] Creating VM: $vmName..."
 
 # Modify hardware
 Write-Host "[+] Configuring VM hardware: 1024MB RAM, 2 CPUs, VMSVGA..."
-& "$vboxPath" modifyvm "$vmName" --memory 1024 --cpus 2 --vram 64 --graphicscontroller vmsvga --boot1 dvd --boot2 disk --boot3 none --boot4 none --audio-driver dsound --nic1 nat
+& "$vboxPath" modifyvm "$vmName" --memory 1024 --cpus 2 --vram 64 --graphicscontroller vmsvga --boot1 dvd --boot2 disk --boot3 none --boot4 none --audio-driver dsound --nic1 nat --natpf1 "http8080,tcp,,8080,,8080" --natpf1 "http80,tcp,,8000,,80"
 
 # Add IDE controller and attach ISO
 Write-Host "[+] Attaching ISO: $isoPath..."

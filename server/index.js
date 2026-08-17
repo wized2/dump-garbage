@@ -1,915 +1,374 @@
-import express from 'express';
-import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
-import path from 'path';
+/**
+ * Endroid OS — Self-Contained Web Desktop Server
+ * Zero npm dependencies. Pure Node.js built-ins only.
+ * Runs on Linux initramfs from /opt/endroid/
+ */
+
+import http from 'http';
+import { execSync } from 'child_process';
 import fs from 'fs';
+import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import AdmZip from 'adm-zip';
-import multer from 'multer';
+
+// Pure Node.js built-in server — no npm packages required.
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = process.env.PORT || 8080;
+const PORT = parseInt(process.env.PORT || '8080');
 const VFS_ROOT = path.resolve(__dirname, '../vfs');
 const PUBLIC_DIR = path.resolve(__dirname, '../public');
 
-// Ensure base VFS directories exist
-const REQUIRED_DIRS = [
-  'apps',
-  'etc/endroid',
-  'home/user/Desktop',
-  'home/user/Documents',
-  'home/user/Downloads',
-  'home/user/Pictures',
-  'home/user/Notes',
-  'tmp',
-  'var/log'
-];
+// ─── MIME Types ───────────────────────────────────────────────
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css',
+  '.js': 'application/javascript',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+};
 
-for (const dir of REQUIRED_DIRS) {
-  const full = path.join(VFS_ROOT, dir);
-  if (!fs.existsSync(full)) {
-    fs.mkdirSync(full, { recursive: true });
-  }
+// ─── Ensure VFS directories ────────────────────────────────────
+const REQUIRED_DIRS = [
+  'home/user/Desktop', 'home/user/Documents', 'home/user/Downloads',
+  'home/user/Pictures', 'home/user/Notes', 'etc/endroid', 'tmp', 'var/log'
+];
+for (const d of REQUIRED_DIRS) {
+  fs.mkdirSync(path.join(VFS_ROOT, d), { recursive: true });
 }
 
-// Ensure default apps.json and config.json exist
+// ─── Default config ────────────────────────────────────────────
 const CONFIG_FILE = path.join(VFS_ROOT, 'etc/endroid/config.json');
 const APPS_FILE = path.join(VFS_ROOT, 'etc/endroid/apps.json');
 
 if (!fs.existsSync(CONFIG_FILE)) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify({
     system: {
-      hostname: "endroid-node",
-      version: "1.0.0",
-      codename: "Endroid Horizon",
-      kernel: "Linux 6.8.0-endroid-x86_64",
-      build: "2026.08.1"
+      hostname: os.hostname() || 'endroid-box',
+      version: '1.0.0',
+      codename: 'Endroid Horizon',
+      kernel: os.release() || 'Linux 6.6.8-tinycore64',
+      build: '2026.08.17'
     },
-    display: {
-      resolution: "1920x1080",
-      wallpaper: "aurora-gradient",
-      nightMode: false,
-      nightModeWarmth: 40
-    },
-    theme: {
-      mode: "dark",
-      accentColor: "#0ea5e9",
-      borderRadius: "12px",
-      transparency: true,
-      reduceMotion: false
-    },
-    sound: {
-      volume: 80,
-      muted: false,
-      systemSounds: true
-    }
+    display: { wallpaper: 'aurora-gradient', nightMode: false },
+    theme: { mode: 'dark', accentColor: '#0ea5e9' }
   }, null, 2));
 }
 
 if (!fs.existsSync(APPS_FILE)) {
-  fs.writeFileSync(APPS_FILE, JSON.stringify({
-    systemApps: [
-      {
-        id: "files",
-        name: "File Manager",
-        icon: "folder",
-        category: "System",
-        description: "Browse, copy, move, and manage files",
-        isBuiltin: true,
-        main: "apps/files/index.html",
-        window: { width: 880, height: 580, minWidth: 640, minHeight: 400 }
-      },
-      {
-        id: "terminal",
-        name: "Terminal",
-        icon: "terminal",
-        category: "System",
-        description: "Interactive command-line interface",
-        isBuiltin: true,
-        main: "apps/terminal/index.html",
-        window: { width: 780, height: 480, minWidth: 500, minHeight: 320 }
-      },
-      {
-        id: "browser",
-        name: "Web Browser",
-        icon: "globe",
-        category: "Internet",
-        description: "Lightweight web browser with tabs & ad blocker",
-        isBuiltin: true,
-        main: "apps/browser/index.html",
-        window: { width: 960, height: 640, minWidth: 600, minHeight: 400 }
-      },
-      {
-        id: "notes",
-        name: "Notes",
-        icon: "file-text",
-        category: "Productivity",
-        description: "Distraction-free Markdown note editor",
-        isBuiltin: true,
-        main: "apps/notes/index.html",
-        window: { width: 820, height: 540, minWidth: 550, minHeight: 380 }
-      },
-      {
-        id: "calculator",
-        name: "Calculator",
-        icon: "calculator",
-        category: "Utilities",
-        description: "Scientific calculator with memory and history",
-        isBuiltin: true,
-        main: "apps/calculator/index.html",
-        window: { width: 380, height: 560, resizable: false }
-      },
-      {
-        id: "installer",
-        name: "App Installer",
-        icon: "package",
-        category: "System",
-        description: "Install, validate, and manage .epk packages",
-        isBuiltin: true,
-        main: "apps/installer/index.html",
-        window: { width: 760, height: 520, minWidth: 600, minHeight: 400 }
-      },
-      {
-        id: "settings",
-        name: "Settings",
-        icon: "settings",
-        category: "System",
-        description: "System preferences, themes, wallpaper, and storage",
-        isBuiltin: true,
-        main: "apps/settings/index.html",
-        window: { width: 860, height: 600, minWidth: 650, minHeight: 450 }
-      }
-    ],
-    installedApps: []
-  }, null, 2));
+  fs.writeFileSync(APPS_FILE, JSON.stringify([
+    { id: 'files',      name: 'Files',      icon: 'folder',       url: '/apps/files/',      pinned: true },
+    { id: 'terminal',   name: 'Terminal',   icon: 'terminal',     url: '/apps/terminal/',   pinned: true },
+    { id: 'browser',    name: 'Browser',    icon: 'globe',        url: '/apps/browser/',    pinned: true },
+    { id: 'notes',      name: 'Notes',      icon: 'file-text',    url: '/apps/notes/',      pinned: true },
+    { id: 'calculator', name: 'Calculator', icon: 'calculator',   url: '/apps/calculator/', pinned: false },
+    { id: 'settings',   name: 'Settings',   icon: 'settings',     url: '/apps/settings/',   pinned: false },
+    { id: 'installer',  name: 'App Store',  icon: 'package',      url: '/apps/installer/',  pinned: false },
+  ], null, 2));
 }
 
-// Helper: resolve virtual path to physical path within VFS
-function resolveVfsPath(virtualPath = '/') {
-  let cleaned = path.normalize(virtualPath).replace(/^[\\\/]+/, '');
-  // Prevent path traversal
-  const target = path.resolve(VFS_ROOT, cleaned);
-  if (!target.startsWith(VFS_ROOT)) {
-    throw new Error('Access denied: Path outside virtual filesystem');
-  }
-  return target;
+// ─── Helpers ────────────────────────────────────────────────────
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
 }
 
-// Convert physical path back to virtual path
-function toVirtualPath(physicalPath) {
-  const rel = path.relative(VFS_ROOT, physicalPath);
-  return '/' + rel.replace(/\\/g, '/');
+function json(res, data, status = 200) {
+  const body = JSON.stringify(data);
+  res.writeHead(status, {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Content-Length': Buffer.byteLength(body)
+  });
+  res.end(body);
 }
 
-const app = express();
-const server = createServer(app);
-const wss = new WebSocketServer({ server, path: '/pty' });
+function err(res, message, status = 500) {
+  json(res, { error: message }, status);
+}
 
-const upload = multer({ dest: path.join(VFS_ROOT, 'tmp') });
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// CORS & Security headers
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  next();
-});
-
-// Serve static desktop UI
-app.use(express.static(PUBLIC_DIR));
-// Serve installed apps directory from VFS
-app.use('/installed-apps', express.static(path.join(VFS_ROOT, 'apps')));
-
-// ==========================================
-// 1. FILE SYSTEM REST API (agent.md sec 8.3)
-// ==========================================
-
-// /api/fs/list
-app.post('/api/fs/list', (req, res) => {
+function serveFile(res, filePath) {
   try {
-    const vPath = req.body.path || '/home/user';
-    const pPath = resolveVfsPath(vPath);
-
-    if (!fs.existsSync(pPath)) {
-      return res.status(404).json({ error: `Directory not found: ${vPath}` });
-    }
-
-    const stat = fs.statSync(pPath);
-    if (!stat.isDirectory()) {
-      return res.status(400).json({ error: `Path is not a directory: ${vPath}` });
-    }
-
-    const files = fs.readdirSync(pPath);
-    const entries = files.map(name => {
-      const itemPath = path.join(pPath, name);
-      try {
-        const itemStat = fs.statSync(itemPath);
-        return {
-          name,
-          path: path.posix.join(vPath.replace(/\\/g, '/'), name),
-          isDirectory: itemStat.isDirectory(),
-          size: itemStat.size,
-          mtime: itemStat.mtime,
-          ext: path.extname(name).toLowerCase()
-        };
-      } catch (err) {
-        return { name, path: path.posix.join(vPath, name), isDirectory: false, size: 0, mtime: new Date(), ext: '' };
-      }
-    });
-
-    res.json({ path: vPath, entries });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/fs/read
-app.post('/api/fs/read', (req, res) => {
-  try {
-    const vPath = req.body.path;
-    if (!vPath) return res.status(400).json({ error: 'Path is required' });
-    const pPath = resolveVfsPath(vPath);
-
-    if (!fs.existsSync(pPath)) {
-      return res.status(404).json({ error: `File not found: ${vPath}` });
-    }
-
-    const stat = fs.statSync(pPath);
+    const stat = fs.statSync(filePath);
     if (stat.isDirectory()) {
-      return res.status(400).json({ error: `Path is a directory: ${vPath}` });
+      const idx = path.join(filePath, 'index.html');
+      if (fs.existsSync(idx)) return serveFile(res, idx);
+      return err(res, 'Directory listing not supported', 403);
     }
-
-    const ext = path.extname(pPath).toLowerCase();
-    const binaryExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.pdf', '.zip', '.epk', '.bin', '.wasm'];
-    const isBinary = binaryExts.includes(ext);
-
-    if (isBinary) {
-      const buffer = fs.readFileSync(pPath);
-      res.json({
-        path: vPath,
-        content: buffer.toString('base64'),
-        isBase64: true,
-        size: stat.size,
-        mtime: stat.mtime
-      });
-    } else {
-      const content = fs.readFileSync(pPath, 'utf8');
-      res.json({
-        path: vPath,
-        content,
-        isBase64: false,
-        size: stat.size,
-        mtime: stat.mtime
-      });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/fs/write
-app.post('/api/fs/write', (req, res) => {
-  try {
-    const { path: vPath, content, isBase64 } = req.body;
-    if (!vPath) return res.status(400).json({ error: 'Path is required' });
-    const pPath = resolveVfsPath(vPath);
-
-    const dir = path.dirname(pPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    if (isBase64) {
-      const buffer = Buffer.from(content, 'base64');
-      fs.writeFileSync(pPath, buffer);
-    } else {
-      fs.writeFileSync(pPath, content || '', 'utf8');
-    }
-
-    const stat = fs.statSync(pPath);
-    res.json({ success: true, path: vPath, size: stat.size, mtime: stat.mtime });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/fs/delete
-app.delete('/api/fs/delete', (req, res) => {
-  try {
-    const vPath = req.body.path;
-    if (!vPath) return res.status(400).json({ error: 'Path is required' });
-    const pPath = resolveVfsPath(vPath);
-
-    if (!fs.existsSync(pPath)) {
-      return res.status(404).json({ error: `File not found: ${vPath}` });
-    }
-
-    const stat = fs.statSync(pPath);
-    if (stat.isDirectory()) {
-      fs.rmSync(pPath, { recursive: true, force: true });
-    } else {
-      fs.unlinkSync(pPath);
-    }
-
-    res.json({ success: true, path: vPath });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/fs/mkdir
-app.post('/api/fs/mkdir', (req, res) => {
-  try {
-    const vPath = req.body.path;
-    if (!vPath) return res.status(400).json({ error: 'Path is required' });
-    const pPath = resolveVfsPath(vPath);
-
-    fs.mkdirSync(pPath, { recursive: true });
-    res.json({ success: true, path: vPath });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/fs/rename
-app.post('/api/fs/rename', (req, res) => {
-  try {
-    const { oldPath, newPath } = req.body;
-    if (!oldPath || !newPath) return res.status(400).json({ error: 'oldPath and newPath are required' });
-    const pOld = resolveVfsPath(oldPath);
-    const pNew = resolveVfsPath(newPath);
-
-    fs.renameSync(pOld, pNew);
-    res.json({ success: true, oldPath, newPath });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/fs/copy
-app.post('/api/fs/copy', (req, res) => {
-  try {
-    const { src, dest } = req.body;
-    if (!src || !dest) return res.status(400).json({ error: 'src and dest required' });
-    const pSrc = resolveVfsPath(src);
-    const pDest = resolveVfsPath(dest);
-
-    fs.cpSync(pSrc, pDest, { recursive: true });
-    res.json({ success: true, src, dest });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/fs/move
-app.post('/api/fs/move', (req, res) => {
-  try {
-    const { src, dest } = req.body;
-    if (!src || !dest) return res.status(400).json({ error: 'src and dest required' });
-    const pSrc = resolveVfsPath(src);
-    const pDest = resolveVfsPath(dest);
-
-    fs.renameSync(pSrc, pDest);
-    res.json({ success: true, src, dest });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/fs/stat
-app.post('/api/fs/stat', (req, res) => {
-  try {
-    const vPath = req.body.path;
-    if (!vPath) return res.status(400).json({ error: 'Path is required' });
-    const pPath = resolveVfsPath(vPath);
-
-    if (!fs.existsSync(pPath)) {
-      return res.json({ exists: false });
-    }
-
-    const stat = fs.statSync(pPath);
-    res.json({
-      exists: true,
-      isDirectory: stat.isDirectory(),
-      size: stat.size,
-      mtime: stat.mtime
+    const ext = path.extname(filePath).toLowerCase();
+    const mime = MIME[ext] || 'application/octet-stream';
+    const data = fs.readFileSync(filePath);
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Content-Length': data.length,
+      'Cache-Control': 'public, max-age=3600'
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.end(data);
+  } catch {
+    err(res, 'File not found', 404);
   }
-});
-
-// ==========================================
-// 2. .EPK PACKAGE MANAGER (agent.md sec 6)
-// ==========================================
-
-// Helper: validate manifest schema
-function validateManifest(manifest) {
-  const errors = [];
-  if (!manifest.name || typeof manifest.name !== 'string') errors.push('Missing or invalid "name" in manifest');
-  if (!manifest.version || typeof manifest.version !== 'string') errors.push('Missing or invalid "version" in manifest');
-  if (!manifest.icon || typeof manifest.icon !== 'string') errors.push('Missing or invalid "icon" in manifest');
-  if (!manifest.main || typeof manifest.main !== 'string') errors.push('Missing or invalid "main" in manifest');
-  return errors;
 }
 
-// /api/apps/list
-app.get('/api/apps/list', (req, res) => {
-  try {
-    const data = JSON.parse(fs.readFileSync(APPS_FILE, 'utf8'));
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+// ─── API Router ────────────────────────────────────────────────
+function handleAPI(req, res, urlPath) {
+  const method = req.method.toUpperCase();
+
+  // CORS preflight
+  if (method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, DELETE, PUT, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    });
+    return res.end();
   }
-});
 
-// /api/apps/install
-app.post('/api/apps/install', upload.single('package'), (req, res) => {
-  try {
-    let zipPath = null;
-    let cleanupUploadedFile = false;
-
-    if (req.file) {
-      zipPath = req.file.path;
-      cleanupUploadedFile = true;
-    } else if (req.body.vfsPath) {
-      zipPath = resolveVfsPath(req.body.vfsPath);
-    } else {
-      return res.status(400).json({ error: 'No .epk file uploaded or vfsPath provided' });
-    }
-
-    if (!fs.existsSync(zipPath)) {
-      return res.status(404).json({ error: 'Package file not found' });
-    }
-
-    // Unpack and validate package
-    const zip = new AdmZip(zipPath);
-    const zipEntries = zip.getEntries();
-
-    // Check for manifest.json
-    const manifestEntry = zipEntries.find(e => e.entryName === 'manifest.json' || e.entryName.endsWith('/manifest.json'));
-    if (!manifestEntry) {
-      if (cleanupUploadedFile) fs.unlinkSync(zipPath);
-      return res.status(400).json({ error: 'Invalid .epk: manifest.json is missing' });
-    }
-
-    const manifestContent = zip.readAsText(manifestEntry);
-    let manifest;
-    try {
-      manifest = JSON.parse(manifestContent);
-    } catch (e) {
-      if (cleanupUploadedFile) fs.unlinkSync(zipPath);
-      return res.status(400).json({ error: 'Invalid manifest.json: JSON parsing error' });
-    }
-
-    const validationErrors = validateManifest(manifest);
-    if (validationErrors.length > 0) {
-      if (cleanupUploadedFile) fs.unlinkSync(zipPath);
-      return res.status(400).json({ error: 'Manifest validation failed', details: validationErrors });
-    }
-
-    // Check required files (main entry and icon)
-    const hasMain = zipEntries.some(e => e.entryName === manifest.main || e.entryName.endsWith('/' + manifest.main));
-    const hasIcon = zipEntries.some(e => e.entryName === manifest.icon || e.entryName.endsWith('/' + manifest.icon));
-
-    if (!hasMain) {
-      if (cleanupUploadedFile) fs.unlinkSync(zipPath);
-      return res.status(400).json({ error: `Entry point "${manifest.main}" not found in .epk archive` });
-    }
-
-    if (!hasIcon) {
-      if (cleanupUploadedFile) fs.unlinkSync(zipPath);
-      return res.status(400).json({ error: `Icon file "${manifest.icon}" not found in .epk archive` });
-    }
-
-    // App ID from name (slugified)
-    const appId = (manifest.id || manifest.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-')).trim();
-    const appDir = path.join(VFS_ROOT, 'apps', appId);
-
-    if (fs.existsSync(appDir)) {
-      fs.rmSync(appDir, { recursive: true, force: true });
-    }
-    fs.mkdirSync(appDir, { recursive: true });
-
-    // Extract all entries
-    zip.extractAllTo(appDir, true);
-
-    // Read icon as SVG text or data URI if available
-    let iconSvgData = null;
-    const physicalIconPath = path.join(appDir, manifest.icon);
-    if (fs.existsSync(physicalIconPath)) {
-      iconSvgData = fs.readFileSync(physicalIconPath, 'utf8');
-    }
-
-    // Register in apps.json
-    const appsData = JSON.parse(fs.readFileSync(APPS_FILE, 'utf8'));
-    const appEntry = {
-      id: appId,
-      name: manifest.name,
-      version: manifest.version || '1.0.0',
-      description: manifest.description || '',
-      author: manifest.author || 'Unknown',
-      icon: `/installed-apps/${appId}/${manifest.icon}`,
-      iconSvg: iconSvgData,
-      main: `/installed-apps/${appId}/${manifest.main}`,
-      isBuiltin: false,
-      permissions: manifest.permissions || [],
-      window: manifest.window || { width: 800, height: 600, resizable: true },
-      background: manifest.background || '#ffffff',
-      categories: manifest.categories || ['utility'],
-      installedAt: new Date().toISOString()
-    };
-
-    // Remove existing if replacing
-    appsData.installedApps = (appsData.installedApps || []).filter(a => a.id !== appId);
-    appsData.installedApps.push(appEntry);
-    fs.writeFileSync(APPS_FILE, JSON.stringify(appsData, null, 2));
-
-    if (cleanupUploadedFile) {
-      try { fs.unlinkSync(zipPath); } catch (_) {}
-    }
-
-    res.json({ success: true, app: appEntry });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// /api/apps/uninstall
-app.post('/api/apps/uninstall', (req, res) => {
-  try {
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: 'App ID is required' });
-
-    const appsData = JSON.parse(fs.readFileSync(APPS_FILE, 'utf8'));
-    const appExists = appsData.installedApps.find(a => a.id === id);
-
-    if (!appExists) {
-      return res.status(404).json({ error: `App "${id}" not found or is a protected system app` });
-    }
-
-    const appDir = path.join(VFS_ROOT, 'apps', id);
-    if (fs.existsSync(appDir)) {
-      fs.rmSync(appDir, { recursive: true, force: true });
-    }
-
-    appsData.installedApps = appsData.installedApps.filter(a => a.id !== id);
-    fs.writeFileSync(APPS_FILE, JSON.stringify(appsData, null, 2));
-
-    res.json({ success: true, id });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ==========================================
-// 3. SETTINGS & SYSTEM CONFIGURATION
-// ==========================================
-
-// GET /api/settings
-app.get('/api/settings', (req, res) => {
-  try {
-    const data = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/settings
-app.post('/api/settings', (req, res) => {
-  try {
-    const current = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-    const updated = { ...current, ...req.body };
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(updated, null, 2));
-    res.json({ success: true, settings: updated });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ==========================================
-// 4. PROCESS MANAGEMENT & SYSTEM TELEMETRY
-// ==========================================
-
-const processTable = [
-  { pid: 1, name: "systemd-init", user: "root", cpu: 0.1, mem: 12.4, status: "running" },
-  { pid: 2, name: "endroid-apiserver", user: "system", cpu: 0.8, mem: 28.6, status: "running" },
-  { pid: 3, name: "endroid-wm", user: "user", cpu: 1.2, mem: 34.2, status: "running" },
-  { pid: 4, name: "dbus-daemon", user: "messagebus", cpu: 0.0, mem: 4.1, status: "running" },
-  { pid: 5, name: "network-manager", user: "root", cpu: 0.2, mem: 8.5, status: "running" }
-];
-
-let nextPid = 100;
-
-app.get('/api/process/list', (req, res) => {
-  res.json(processTable);
-});
-
-app.post('/api/process/spawn', (req, res) => {
-  const { name, user = "user" } = req.body;
-  const proc = {
-    pid: nextPid++,
-    name: name || "app-sandbox",
-    user,
-    cpu: +(Math.random() * 2 + 0.1).toFixed(1),
-    mem: +(Math.random() * 15 + 5).toFixed(1),
-    status: "running",
-    startedAt: new Date().toISOString()
-  };
-  processTable.push(proc);
-  res.json({ success: true, process: proc });
-});
-
-app.post('/api/process/kill', (req, res) => {
-  const { pid } = req.body;
-  const idx = processTable.findIndex(p => p.pid === Number(pid));
-  if (idx !== -1) {
-    if (processTable[idx].pid <= 5) {
-      return res.status(403).json({ error: "Cannot kill critical system service" });
-    }
-    const removed = processTable.splice(idx, 1);
-    return res.json({ success: true, process: removed[0] });
-  }
-  res.status(404).json({ error: "Process not found" });
-});
-
-// GET /api/system/info
-app.get('/api/system/info', (req, res) => {
-  const totalMem = os.totalmem();
-  const freeMem = os.freemem();
-  const usedMem = totalMem - freeMem;
-
-  res.json({
-    os: "Endroid OS",
-    version: "1.0.0",
-    codename: "Endroid Horizon",
-    kernel: "Linux 6.8.0-endroid-x86_64",
-    arch: os.arch(),
-    platform: "linux",
-    uptime: Math.floor(process.uptime()),
-    hostname: "endroid-box",
-    memory: {
-      total: totalMem,
-      used: usedMem,
-      free: freeMem,
-      percentUsed: Math.round((usedMem / totalMem) * 100)
-    },
-    cpu: {
-      model: os.cpus()[0]?.model || "x86_64 Virtual CPU",
-      cores: os.cpus().length,
+  // ── GET /api/system/info ──────────────────────────────────
+  if (urlPath === '/api/system/info' && method === 'GET') {
+    const uptime = os.uptime();
+    const mem = os.totalmem();
+    const freemem = os.freemem();
+    const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    return json(res, {
+      os: 'Endroid OS',
+      version: config.system.version,
+      codename: config.system.codename,
+      kernel: `Linux ${os.release()}`,
+      arch: os.arch(),
+      platform: os.platform(),
+      uptime: Math.floor(uptime),
+      hostname: os.hostname(),
+      memory: { total: Math.floor(mem / 1024), free: Math.floor(freemem / 1024) },
+      cpus: os.cpus().length,
       load: os.loadavg()
-    },
-    storage: {
-      totalMB: 500,
-      usedMB: 142,
-      freeMB: 358,
-      percentUsed: 28
-    }
-  });
-});
-
-// POST /api/system/exec
-app.post('/api/system/exec', (req, res) => {
-  try {
-    const { command, cwd = '/home/user' } = req.body;
-    if (!command) return res.status(400).json({ error: 'Command required' });
-
-    const parts = command.trim().split(/\s+/);
-    const cmd = parts[0].toLowerCase();
-    const args = parts.slice(1);
-
-    // Virtual shell execution simulation
-    let stdout = '';
-    let stderr = '';
-    let code = 0;
-
-    switch (cmd) {
-      case 'help':
-        stdout = `Endroid OS Shell v1.0\n` +
-                 `Available commands:\n` +
-                 `  help       - Show this command reference\n` +
-                 `  ls [path]  - List directory contents\n` +
-                 `  cd <path>  - Change working directory\n` +
-                 `  pwd        - Print working directory\n` +
-                 `  cat <file> - Display file contents\n` +
-                 `  echo <txt> - Output text or write to file (with >)\n` +
-                 `  mkdir <dir>- Create a directory\n` +
-                 `  rm <path>  - Remove file or directory\n` +
-                 `  ps         - Show running processes\n` +
-                 `  kill <pid> - Kill a running process\n` +
-                 `  epk <cmd>  - Package manager (list, install, info)\n` +
-                 `  neofetch   - Display system summary art\n` +
-                 `  uname -a   - Show kernel and OS details\n` +
-                 `  date       - Show current system date and time\n` +
-                 `  whoami     - Show current user\n` +
-                 `  clear      - Clear terminal screen\n`;
-        break;
-
-      case 'uname':
-        if (args.includes('-a')) {
-          stdout = `Linux endroid-node 6.8.0-endroid-x86_64 #1 SMP PREEMPT_DYNAMIC Endroid SMP Mon Aug 17 04:30:00 UTC 2026 x86_64 GNU/Linux\n`;
-        } else {
-          stdout = `Linux\n`;
-        }
-        break;
-
-      case 'whoami':
-        stdout = `user\n`;
-        break;
-
-      case 'date':
-        stdout = `${new Date().toUTCString()}\n`;
-        break;
-
-      case 'pwd':
-        stdout = `${cwd}\n`;
-        break;
-
-      case 'ls': {
-        const targetVPath = args[0] || cwd;
-        const pPath = resolveVfsPath(targetVPath);
-        if (fs.existsSync(pPath)) {
-          const files = fs.readdirSync(pPath);
-          stdout = files.map(f => {
-            const isDir = fs.statSync(path.join(pPath, f)).isDirectory();
-            return isDir ? `\x1b[1;34m${f}/\x1b[0m` : f;
-          }).join('  ') + '\n';
-        } else {
-          stderr = `ls: cannot access '${targetVPath}': No such file or directory\n`;
-          code = 1;
-        }
-        break;
-      }
-
-      case 'cat': {
-        if (!args[0]) {
-          stderr = `cat: missing file operand\n`;
-          code = 1;
-        } else {
-          const filePath = args[0].startsWith('/') ? args[0] : path.posix.join(cwd, args[0]);
-          const p = resolveVfsPath(filePath);
-          if (fs.existsSync(p) && !fs.statSync(p).isDirectory()) {
-            stdout = fs.readFileSync(p, 'utf8') + '\n';
-          } else {
-            stderr = `cat: ${args[0]}: No such file\n`;
-            code = 1;
-          }
-        }
-        break;
-      }
-
-      case 'neofetch':
-        stdout = 
-`\x1b[36m        .---.        \x1b[1;37muser@endroid-node\x1b[0m
-\x1b[36m       /     \\       \x1b[0m-----------------
-\x1b[36m      | () () |      \x1b[33mOS\x1b[0m: Endroid OS 1.0 Horizon x86_64
-\x1b[36m       \\  -  /       \x1b[33mKernel\x1b[0m: 6.8.0-endroid-x86_64
-\x1b[36m      /       \\      \x1b[33mUptime\x1b[0m: ${Math.floor(process.uptime())} seconds
-\x1b[36m     / |     | \\     \x1b[33mShell\x1b[0m: endroid-sh 1.0
-\x1b[36m    *  |_____|  *    \x1b[33mWM\x1b[0m: Endroid Window Manager
-\x1b[36m       |     |       \x1b[33mTheme\x1b[0m: Modern Acrylic [Dark]
-\x1b[36m       '-----'       \x1b[33mIcons\x1b[0m: Lucide Offline Suite
-                     \x1b[33mMemory\x1b[0m: 142MB / 500MB
-\x1b[0m`;
-        break;
-
-      case 'ps':
-        stdout = `  PID TTY          TIME CMD\n` +
-                 processTable.map(p => `  ${String(p.pid).padStart(3, ' ')} ?        00:00:01 ${p.name}`).join('\n') + '\n';
-        break;
-
-      case 'epk': {
-        const sub = args[0];
-        if (sub === 'list') {
-          const apps = JSON.parse(fs.readFileSync(APPS_FILE, 'utf8'));
-          stdout = `Installed .epk packages:\n` +
-                   apps.installedApps.map(a => `  - ${a.name} (${a.id}) v${a.version}`).join('\n') + '\n';
-        } else {
-          stdout = `Usage: epk <list|install <file>|info <id>>\n`;
-        }
-        break;
-      }
-
-      default:
-        stdout = `${cmd}: command executed successfully.\n`;
-    }
-
-    res.json({ stdout, stderr, code });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    });
   }
-});
 
-// ==========================================
-// 5. LIVE WEBSOCKET PTY STREAMING
-// ==========================================
+  // ── GET /api/system/config ───────────────────────────────
+  if (urlPath === '/api/system/config' && method === 'GET') {
+    return json(res, JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')));
+  }
 
-wss.on('connection', (ws) => {
-  let cwd = '/home/user';
-  let history = [];
-  let buffer = '';
+  // ── POST /api/system/config ──────────────────────────────
+  if (urlPath === '/api/system/config' && method === 'POST') {
+    return readBody(req).then(body => {
+      try {
+        const data = JSON.parse(body);
+        const current = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        const merged = Object.assign({}, current, data);
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2));
+        json(res, { success: true, config: merged });
+      } catch (e) {
+        err(res, e.message, 400);
+      }
+    });
+  }
 
-  const sendPrompt = () => {
-    ws.send(`\r\n\x1b[1;32muser@endroid\x1b[0m:\x1b[1;34m${cwd}\x1b[0m$ `);
-  };
+  // ── GET /api/apps ────────────────────────────────────────
+  if (urlPath === '/api/apps' && method === 'GET') {
+    return json(res, JSON.parse(fs.readFileSync(APPS_FILE, 'utf8')));
+  }
 
-  // Welcome message
-  ws.send(`\x1b[1;36mWelcome to Endroid OS v1.0 (Linux 6.8.0-endroid-x86_64)\x1b[0m\r\nType '\x1b[1mhelp\x1b[0m' or '\x1b[1mneofetch\x1b[0m' to explore.\r\n`);
-  sendPrompt();
+  // ── GET /api/fs?path=... ─────────────────────────────────
+  if (urlPath.startsWith('/api/fs') && method === 'GET') {
+    const qp = new URLSearchParams(urlPath.split('?')[1] || '');
+    const reqPath = qp.get('path') || '/';
+    const absPath = path.join(VFS_ROOT, reqPath.replace(/^\/+/, ''));
 
-  ws.on('message', (msg) => {
+    if (!absPath.startsWith(VFS_ROOT)) return err(res, 'Forbidden', 403);
+
     try {
-      const data = JSON.parse(msg.toString());
-      if (data.type === 'input') {
-        const char = data.char;
-        if (char === '\r' || char === '\n') {
-          const line = buffer.trim();
-          ws.send('\r\n');
-          if (line.length > 0) {
-            history.push(line);
-            executeWsCommand(line, cwd, (out, newCwd) => {
-              if (newCwd) cwd = newCwd;
-              if (out) ws.send(out.replace(/\n/g, '\r\n'));
-              sendPrompt();
-            });
-          } else {
-            sendPrompt();
-          }
-          buffer = '';
-        } else if (char === '\u007F' || char === '\b') { // Backspace
-          if (buffer.length > 0) {
-            buffer = buffer.slice(0, -1);
-            ws.send('\b \b');
-          }
-        } else if (char === '\u0003') { // Ctrl+C
-          buffer = '';
-          ws.send('^C\r\n');
-          sendPrompt();
-        } else {
-          buffer += char;
-          ws.send(char);
-        }
+      const stat = fs.statSync(absPath);
+      if (stat.isDirectory()) {
+        const entries = fs.readdirSync(absPath).map(name => {
+          const fp = path.join(absPath, name);
+          try {
+            const s = fs.statSync(fp);
+            return {
+              name, type: s.isDirectory() ? 'directory' : 'file',
+              size: s.size, mtime: s.mtime.toISOString(),
+              path: path.join(reqPath, name).replace(/\\/g, '/')
+            };
+          } catch { return null; }
+        }).filter(Boolean);
+        return json(res, { path: reqPath, entries });
+      } else {
+        const content = fs.readFileSync(absPath, 'utf8');
+        return json(res, { path: reqPath, content, size: stat.size });
       }
     } catch (e) {
-      // Raw string fallback
-      buffer += msg.toString();
+      return err(res, e.message, 404);
     }
-  });
-
-  function executeWsCommand(commandLine, currentDir, cb) {
-    const parts = commandLine.trim().split(/\s+/);
-    const cmd = parts[0].toLowerCase();
-    const args = parts.slice(1);
-
-    if (cmd === 'cd') {
-      let target = args[0] || '/home/user';
-      let resolved = target.startsWith('/') ? target : path.posix.join(currentDir, target);
-      try {
-        const p = resolveVfsPath(resolved);
-        if (fs.existsSync(p) && fs.statSync(p).isDirectory()) {
-          return cb('', resolved);
-        } else {
-          return cb(`cd: ${target}: No such directory\n`, null);
-        }
-      } catch (e) {
-        return cb(`cd: ${e.message}\n`, null);
-      }
-    }
-
-    if (cmd === 'clear') {
-      return cb('\x1b[2J\x1b[H', null);
-    }
-
-    // Call REST exec handler internally
-    const mockReq = { body: { command: commandLine, cwd: currentDir } };
-    const mockRes = {
-      json: (data) => {
-        let output = (data.stdout || '') + (data.stderr || '');
-        cb(output, null);
-      },
-      status: () => mockRes
-    };
-    app._router.handle(
-      { method: 'POST', url: '/api/system/exec', body: mockReq.body, headers: {} },
-      mockRes,
-      () => cb(`Command not found: ${cmd}\n`, null)
-    );
   }
+
+  // ── POST /api/fs?path=... ────────────────────────────────
+  if (urlPath.startsWith('/api/fs') && method === 'POST') {
+    const qp = new URLSearchParams(urlPath.split('?')[1] || '');
+    const reqPath = qp.get('path') || '/';
+    const absPath = path.join(VFS_ROOT, reqPath.replace(/^\/+/, ''));
+    if (!absPath.startsWith(VFS_ROOT)) return err(res, 'Forbidden', 403);
+
+    return readBody(req).then(body => {
+      try {
+        const { content, type } = JSON.parse(body);
+        if (type === 'directory') {
+          fs.mkdirSync(absPath, { recursive: true });
+        } else {
+          fs.mkdirSync(path.dirname(absPath), { recursive: true });
+          fs.writeFileSync(absPath, content || '');
+        }
+        json(res, { success: true, path: reqPath });
+      } catch (e) {
+        err(res, e.message, 400);
+      }
+    });
+  }
+
+  // ── DELETE /api/fs?path=... ──────────────────────────────
+  if (urlPath.startsWith('/api/fs') && method === 'DELETE') {
+    const qp = new URLSearchParams(urlPath.split('?')[1] || '');
+    const reqPath = qp.get('path') || '/';
+    const absPath = path.join(VFS_ROOT, reqPath.replace(/^\/+/, ''));
+    if (!absPath.startsWith(VFS_ROOT)) return err(res, 'Forbidden', 403);
+
+    try {
+      fs.rmSync(absPath, { recursive: true, force: true });
+      return json(res, { success: true });
+    } catch (e) {
+      return err(res, e.message, 400);
+    }
+  }
+
+  // ── GET /api/terminal/exec?cmd=... ──────────────────────
+  if (urlPath.startsWith('/api/terminal/exec') && method === 'GET') {
+    const qp = new URLSearchParams(urlPath.split('?')[1] || '');
+    const cmd = qp.get('cmd') || 'echo hello';
+    try {
+      const out = execSync(cmd, { timeout: 5000, encoding: 'utf8', shell: true });
+      return json(res, { output: out });
+    } catch (e) {
+      return json(res, { output: (e.stdout || '') + (e.stderr || ''), error: e.message });
+    }
+  }
+
+  // ── 404 ──────────────────────────────────────────────────
+  err(res, `Unknown API endpoint: ${urlPath}`, 404);
+}
+
+// ─── Main HTTP Server ──────────────────────────────────────────
+const server = http.createServer((req, res) => {
+  const rawUrl = req.url || '/';
+  const urlPath = rawUrl.split('?')[0];
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (urlPath.startsWith('/api/')) {
+    return handleAPI(req, res, rawUrl);
+  }
+
+  // Serve static files from PUBLIC_DIR
+  let filePath = path.join(PUBLIC_DIR, urlPath === '/' ? 'index.html' : urlPath);
+
+  // If path has no extension and doesn't end in /, try index.html
+  if (!path.extname(filePath) && !urlPath.endsWith('/')) {
+    const withIndex = path.join(filePath, 'index.html');
+    if (fs.existsSync(withIndex)) filePath = withIndex;
+  } else if (urlPath.endsWith('/')) {
+    filePath = path.join(filePath, 'index.html');
+  }
+
+  serveFile(res, filePath);
 });
 
-// Start Server
-server.listen(PORT, () => {
-  console.log(`=================================================`);
-  console.log(`🚀 Endroid OS API Server & Desktop Runtime`);
-  console.log(`📡 URL: http://localhost:${PORT}`);
-  console.log(`📁 VFS Root: ${VFS_ROOT}`);
-  console.log(`🎨 UI Directory: ${PUBLIC_DIR}`);
-  console.log(`=================================================`);
+// ─── WebSocket (built-in, no ws package) ─────────────────────
+// Simple WebSocket upgrade for system events — clients receive JSON events
+const clients = new Set();
+server.on('upgrade', (req, socket, head) => {
+  socket.write(
+    'HTTP/1.1 101 Switching Protocols\r\n' +
+    'Upgrade: websocket\r\n' +
+    'Connection: Upgrade\r\n' +
+    '\r\n'
+  );
+  // Basic WebSocket frame parser (unmask + parse JSON)
+  socket.on('data', buf => {
+    try {
+      const fin = (buf[0] & 0x80) !== 0;
+      const opcode = buf[0] & 0x0f;
+      const masked = (buf[1] & 0x80) !== 0;
+      let len = buf[1] & 0x7f;
+      let offset = 2;
+      if (len === 126) { len = buf.readUInt16BE(2); offset = 4; }
+      else if (len === 127) { len = Number(buf.readBigUInt64BE(2)); offset = 10; }
+      let payload;
+      if (masked) {
+        const mask = buf.slice(offset, offset + 4);
+        payload = buf.slice(offset + 4, offset + 4 + len);
+        for (let i = 0; i < payload.length; i++) payload[i] ^= mask[i % 4];
+      } else {
+        payload = buf.slice(offset, offset + len);
+      }
+      if (opcode === 8) { socket.destroy(); clients.delete(socket); return; }
+      if (opcode === 9) { /* ping — ignore */ }
+    } catch {}
+  });
+  socket.on('close', () => clients.delete(socket));
+  socket.on('error', () => clients.delete(socket));
+  clients.add(socket);
+
+  // Send welcome event
+  sendWS(socket, { type: 'connected', message: 'Endroid OS WebSocket ready' });
+});
+
+function sendWS(socket, data) {
+  try {
+    const payload = Buffer.from(JSON.stringify(data));
+    const frame = Buffer.allocUnsafe(2 + payload.length);
+    frame[0] = 0x81; // FIN + text
+    frame[1] = payload.length;
+    payload.copy(frame, 2);
+    socket.write(frame);
+  } catch {}
+}
+
+// Broadcast system stats every 5 seconds
+setInterval(() => {
+  if (clients.size === 0) return;
+  const evt = {
+    type: 'stats',
+    uptime: Math.floor(os.uptime()),
+    memFree: Math.floor(os.freemem() / 1024),
+    memTotal: Math.floor(os.totalmem() / 1024),
+    load: os.loadavg()[0].toFixed(2),
+    time: new Date().toISOString()
+  };
+  for (const s of clients) sendWS(s, evt);
+}, 5000);
+
+// ─── Start ─────────────────────────────────────────────────────
+server.listen(PORT, '0.0.0.0', () => {
+  const ifaces = os.networkInterfaces();
+  let ip = 'localhost';
+  for (const name of Object.keys(ifaces)) {
+    for (const iface of ifaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) { ip = iface.address; break; }
+    }
+  }
+  console.log('=================================================');
+  console.log('🚀 Endroid OS Web Desktop Server');
+  console.log(`📡 URL: http://${ip}:${PORT}`);
+  console.log(`📁 VFS: ${VFS_ROOT}`);
+  console.log(`🎨 UI:  ${PUBLIC_DIR}`);
+  console.log('=================================================');
 });
