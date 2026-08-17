@@ -60,10 +60,11 @@
 
       // Default system shortcuts
       const shortcuts = [
+        { name: 'Install to PC', icon: 'hard-drive-download', action: () => this.wm.createWindow({ id: 'os-installer', title: 'Install Endroid OS to PC', icon: 'hard-drive-download', url: 'apps/os-installer/index.html', width: 920, height: 620 }) },
         { name: 'File Manager', icon: 'folder', action: () => this.wm.createWindow({ id: 'files', title: 'File Manager', icon: 'folder', url: 'apps/files/index.html', width: 880, height: 580 }) },
         { name: 'Terminal', icon: 'terminal', action: () => this.wm.createWindow({ id: 'terminal', title: 'Terminal', icon: 'terminal', url: 'apps/terminal/index.html', width: 780, height: 480 }) },
         { name: 'Web Browser', icon: 'globe', action: () => this.wm.createWindow({ id: 'browser', title: 'Web Browser', icon: 'globe', url: 'apps/browser/index.html', width: 960, height: 640 }) },
-        { name: 'App Installer', icon: 'package', action: () => this.wm.createWindow({ id: 'installer', title: 'App Installer', icon: 'package', url: 'apps/installer/index.html', width: 760, height: 520 }) },
+        { name: 'App Store', icon: 'package', action: () => this.wm.createWindow({ id: 'installer', title: 'App Store', icon: 'package', url: 'apps/installer/index.html', width: 760, height: 520 }) },
         { name: 'Settings', icon: 'settings', action: () => this.wm.createWindow({ id: 'settings', title: 'Settings', icon: 'settings', url: 'apps/settings/index.html', width: 860, height: 600 }) }
       ];
 

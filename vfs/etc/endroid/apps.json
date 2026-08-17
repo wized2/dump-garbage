@@ -1,6 +1,21 @@
 {
   "systemApps": [
     {
+      "id": "os-installer",
+      "name": "Install to PC",
+      "icon": "hard-drive-download",
+      "category": "System",
+      "description": "Install Endroid OS directly to internal PC SSD/HDD drive",
+      "isBuiltin": true,
+      "main": "apps/os-installer/index.html",
+      "window": {
+        "width": 920,
+        "height": 620,
+        "minWidth": 780,
+        "minHeight": 520
+      }
+    },
+    {
       "id": "files",
       "name": "File Manager",
       "icon": "folder",
@@ -76,7 +91,7 @@
     },
     {
       "id": "installer",
-      "name": "App Installer",
+      "name": "App Store",
       "icon": "package",
       "category": "System",
       "description": "Install, validate, and manage .epk packages",
@@ -94,7 +109,7 @@
       "name": "Settings",
       "icon": "settings",
       "category": "System",
-      "description": "System preferences, themes, wallpaper, and storage",
+      "description": "System preferences, hardware, themes, and network",
       "isBuiltin": true,
       "main": "apps/settings/index.html",
       "window": {
@@ -105,56 +120,5 @@
       }
     }
   ],
-  "installedApps": [
-    {
-      "id": "retro-snake",
-      "name": "Retro Snake",
-      "version": "1.0.0",
-      "description": "Classic retro arcade snake game with smooth controls and score tracker",
-      "author": "Endroid Games",
-      "icon": "/installed-apps/retro-snake/icon.svg",
-      "iconSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#22c55e\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"6\"/><path d=\"M12 12h.01\"/><path d=\"M17 12h.01\"/><path d=\"M7 12h.01\"/></svg>",
-      "main": "/installed-apps/retro-snake/index.html",
-      "isBuiltin": false,
-      "permissions": [
-        "filesystem.read"
-      ],
-      "window": {
-        "width": 540,
-        "height": 580,
-        "resizable": false
-      },
-      "background": "#090d16",
-      "categories": [
-        "games",
-        "arcade"
-      ],
-      "installedAt": "2026-08-17T05:05:10.325Z"
-    },
-    {
-      "id": "sys-monitor",
-      "name": "System Monitor",
-      "version": "1.0.0",
-      "description": "Live hardware performance meters and memory telemetry",
-      "author": "Endroid Core",
-      "icon": "/installed-apps/sys-monitor/icon.svg",
-      "iconSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#f59e0b\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M22 12h-4l-3 9L9 3l-3 9H2\"/></svg>",
-      "main": "/installed-apps/sys-monitor/index.html",
-      "isBuiltin": false,
-      "permissions": [
-        "system.telemetry"
-      ],
-      "window": {
-        "width": 640,
-        "height": 480,
-        "resizable": true
-      },
-      "background": "#0f172a",
-      "categories": [
-        "system",
-        "utilities"
-      ],
-      "installedAt": "2026-08-17T05:06:58.982Z"
-    }
-  ]
+  "installedApps": []
 }

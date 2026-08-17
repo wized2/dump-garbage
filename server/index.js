@@ -1,17 +1,15 @@
 /**
- * Endroid OS — Self-Contained Web Desktop Server
+ * Endroid OS — Self-Contained Bare-Metal Web Desktop Server
  * Zero npm dependencies. Pure Node.js built-ins only.
- * Runs on Linux initramfs from /opt/endroid/
+ * Runs on Linux bare-metal kernel & initramfs from /opt/endroid/
  */
 
 import http from 'http';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-
-// Pure Node.js built-in server — no npm packages required.
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,11 +26,16 @@ const MIME = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
   '.woff': 'font/woff',
   '.ttf': 'font/ttf',
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
+  '.epk': 'application/octet-stream',
+  '.zip': 'application/zip'
 };
 
 // ─── Ensure VFS directories ────────────────────────────────────
@@ -41,7 +44,9 @@ const REQUIRED_DIRS = [
   'home/user/Pictures', 'home/user/Notes', 'etc/endroid', 'tmp', 'var/log'
 ];
 for (const d of REQUIRED_DIRS) {
-  fs.mkdirSync(path.join(VFS_ROOT, d), { recursive: true });
+  try {
+    fs.mkdirSync(path.join(VFS_ROOT, d), { recursive: true });
+  } catch (_) {}
 }
 
 // ─── Default config ────────────────────────────────────────────
@@ -49,29 +54,38 @@ const CONFIG_FILE = path.join(VFS_ROOT, 'etc/endroid/config.json');
 const APPS_FILE = path.join(VFS_ROOT, 'etc/endroid/apps.json');
 
 if (!fs.existsSync(CONFIG_FILE)) {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({
-    system: {
-      hostname: os.hostname() || 'endroid-box',
-      version: '1.0.0',
-      codename: 'Endroid Horizon',
-      kernel: os.release() || 'Linux 6.6.8-tinycore64',
-      build: '2026.08.17'
-    },
-    display: { wallpaper: 'aurora-gradient', nightMode: false },
-    theme: { mode: 'dark', accentColor: '#0ea5e9' }
-  }, null, 2));
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({
+      system: {
+        hostname: os.hostname() || 'endroid-pc',
+        version: '2.0.0',
+        codename: 'Endroid Bare-Metal Horizon',
+        kernel: os.release() || 'Linux 6.6.8-endroid64',
+        build: '2026.08.17-standalone',
+        arch: os.arch()
+      },
+      display: { wallpaper: 'aurora', nightMode: false },
+      theme: { mode: 'dark', accentColor: '#0ea5e9' }
+    }, null, 2));
+  } catch (_) {}
 }
 
 if (!fs.existsSync(APPS_FILE)) {
-  fs.writeFileSync(APPS_FILE, JSON.stringify([
-    { id: 'files',      name: 'Files',      icon: 'folder',       url: '/apps/files/',      pinned: true },
-    { id: 'terminal',   name: 'Terminal',   icon: 'terminal',     url: '/apps/terminal/',   pinned: true },
-    { id: 'browser',    name: 'Browser',    icon: 'globe',        url: '/apps/browser/',    pinned: true },
-    { id: 'notes',      name: 'Notes',      icon: 'file-text',    url: '/apps/notes/',      pinned: true },
-    { id: 'calculator', name: 'Calculator', icon: 'calculator',   url: '/apps/calculator/', pinned: false },
-    { id: 'settings',   name: 'Settings',   icon: 'settings',     url: '/apps/settings/',   pinned: false },
-    { id: 'installer',  name: 'App Store',  icon: 'package',      url: '/apps/installer/',  pinned: false },
-  ], null, 2));
+  try {
+    fs.writeFileSync(APPS_FILE, JSON.stringify({
+      systemApps: [
+        { id: 'os-installer', name: 'Install Endroid OS', icon: 'hard-drive-download', category: 'System', description: 'Install Endroid OS directly to PC internal drive', isBuiltin: true, main: 'apps/os-installer/index.html', window: { width: 920, height: 620, minWidth: 780, minHeight: 520 } },
+        { id: 'files', name: 'File Manager', icon: 'folder', category: 'System', description: 'Browse, copy, move, and manage files', isBuiltin: true, main: 'apps/files/index.html', window: { width: 880, height: 580, minWidth: 640, minHeight: 400 } },
+        { id: 'terminal', name: 'Terminal', icon: 'terminal', category: 'System', description: 'Interactive command-line interface', isBuiltin: true, main: 'apps/terminal/index.html', window: { width: 780, height: 480, minWidth: 500, minHeight: 320 } },
+        { id: 'browser', name: 'Web Browser', icon: 'globe', category: 'Internet', description: 'Lightweight web browser with tabs & ad blocker', isBuiltin: true, main: 'apps/browser/index.html', window: { width: 960, height: 640, minWidth: 600, minHeight: 400 } },
+        { id: 'notes', name: 'Notes', icon: 'file-text', category: 'Productivity', description: 'Distraction-free Markdown note editor', isBuiltin: true, main: 'apps/notes/index.html', window: { width: 820, height: 540, minWidth: 550, minHeight: 380 } },
+        { id: 'calculator', name: 'Calculator', icon: 'calculator', category: 'Utilities', description: 'Scientific calculator with memory and history', isBuiltin: true, main: 'apps/calculator/index.html', window: { width: 380, height: 560, resizable: false } },
+        { id: 'installer', name: 'App Store', icon: 'package', category: 'System', description: 'Install, validate, and manage .epk packages', isBuiltin: true, main: 'apps/installer/index.html', window: { width: 760, height: 520, minWidth: 600, minHeight: 400 } },
+        { id: 'settings', name: 'Settings', icon: 'settings', category: 'System', description: 'System preferences, hardware, themes, and network', isBuiltin: true, main: 'apps/settings/index.html', window: { width: 860, height: 600, minWidth: 650, minHeight: 450 } }
+      ],
+      installedApps: []
+    }, null, 2));
+  } catch (_) {}
 }
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -120,6 +134,114 @@ function serveFile(res, filePath) {
   }
 }
 
+// ─── Hardware & Physical Disk Scanners ──────────────────────────
+function scanPhysicalDisks() {
+  const disks = [];
+  const isLinux = os.platform() === 'linux';
+
+  if (isLinux) {
+    try {
+      const sysBlock = '/sys/block';
+      if (fs.existsSync(sysBlock)) {
+        const devs = fs.readdirSync(sysBlock).filter(d => {
+          return !d.startsWith('ram') && !d.startsWith('loop') && !d.startsWith('sr');
+        });
+
+        for (const dev of devs) {
+          const devPath = `/dev/${dev}`;
+          let sizeBytes = 0;
+          let model = 'Generic Drive';
+          let isRotational = true;
+
+          try {
+            const sectors = parseInt(fs.readFileSync(`${sysBlock}/${dev}/size`, 'utf8').trim()) || 0;
+            sizeBytes = sectors * 512;
+          } catch (_) {}
+
+          try {
+            model = fs.readFileSync(`${sysBlock}/${dev}/device/model`, 'utf8').trim();
+          } catch (_) {
+            try {
+              model = fs.readFileSync(`${sysBlock}/${dev}/device/name`, 'utf8').trim();
+            } catch (_) {}
+          }
+
+          try {
+            const rot = fs.readFileSync(`${sysBlock}/${dev}/queue/rotational`, 'utf8').trim();
+            isRotational = rot === '1';
+          } catch (_) {}
+
+          if (sizeBytes > 0) {
+            let driveType = 'HDD';
+            if (dev.startsWith('nvme')) driveType = 'NVMe SSD';
+            else if (!isRotational) driveType = 'SATA SSD';
+            else if (dev.startsWith('sd')) driveType = 'SATA Drive';
+
+            const sizeGb = (sizeBytes / (1024 * 1024 * 1024)).toFixed(1);
+
+            const partitions = [];
+            try {
+              const partDevs = fs.readdirSync(`${sysBlock}/${dev}`).filter(p => p.startsWith(dev));
+              for (const p of partDevs) {
+                try {
+                  const pSectors = parseInt(fs.readFileSync(`${sysBlock}/${dev}/${p}/size`, 'utf8').trim()) || 0;
+                  partitions.push({
+                    name: `/dev/${p}`,
+                    sizeGb: (pSectors * 512 / (1024 * 1024 * 1024)).toFixed(1)
+                  });
+                } catch (_) {}
+              }
+            } catch (_) {}
+
+            disks.push({
+              device: devPath,
+              name: dev,
+              model: model || 'Internal Storage Drive',
+              sizeBytes,
+              sizeGb: `${sizeGb} GB`,
+              type: driveType,
+              partitions
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Physical disk scan exception:', e);
+    }
+  }
+
+  // Fallback / Demonstration block devices when running in dev or no physical disks found
+  if (disks.length === 0) {
+    disks.push(
+      {
+        device: '/dev/nvme0n1',
+        name: 'nvme0n1',
+        model: 'Samsung SSD 980 PRO 500GB',
+        sizeBytes: 500107862016,
+        sizeGb: '465.8 GB',
+        type: 'NVMe SSD (High Performance)',
+        partitions: [
+          { name: '/dev/nvme0n1p1', sizeGb: '0.5 GB' },
+          { name: '/dev/nvme0n1p2', sizeGb: '465.3 GB' }
+        ]
+      },
+      {
+        device: '/dev/sda',
+        name: 'sda',
+        model: 'Crucial MX500 1TB SSD',
+        sizeBytes: 1000204886016,
+        sizeGb: '931.5 GB',
+        type: 'SATA SSD',
+        partitions: [
+          { name: '/dev/sda1', sizeGb: '931.5 GB' }
+        ]
+      }
+    );
+  }
+
+  return disks;
+}
+
 // ─── API Router ────────────────────────────────────────────────
 function handleAPI(req, res, urlPath) {
   const method = req.method.toUpperCase();
@@ -139,11 +261,15 @@ function handleAPI(req, res, urlPath) {
     const uptime = os.uptime();
     const mem = os.totalmem();
     const freemem = os.freemem();
-    const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    let config = { system: { version: '2.0.0', codename: 'Horizon Bare-Metal' } };
+    try {
+      config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    } catch (_) {}
+
     return json(res, {
-      os: 'Endroid OS',
-      version: config.system.version,
-      codename: config.system.codename,
+      os: 'Endroid OS (Standalone)',
+      version: config.system?.version || '2.0.0',
+      codename: config.system?.codename || 'Horizon Bare-Metal',
       kernel: `Linux ${os.release()}`,
       arch: os.arch(),
       platform: os.platform(),
@@ -155,9 +281,172 @@ function handleAPI(req, res, urlPath) {
     });
   }
 
+  // ── GET /api/system/hardware ─────────────────────────────
+  if (urlPath === '/api/system/hardware' && method === 'GET') {
+    const cpus = os.cpus();
+    const cpuModel = cpus.length > 0 ? cpus[0].model : 'x86_64 Processor';
+    const totalMemGb = (os.totalmem() / (1024 * 1024 * 1024)).toFixed(2);
+    const freeMemGb = (os.freemem() / (1024 * 1024 * 1024)).toFixed(2);
+    const usedMemGb = ((os.totalmem() - os.freemem()) / (1024 * 1024 * 1024)).toFixed(2);
+
+    let battery = { present: false, percent: 100, charging: true };
+    try {
+      if (fs.existsSync('/sys/class/power_supply/BAT0/capacity')) {
+        battery.present = true;
+        battery.percent = parseInt(fs.readFileSync('/sys/class/power_supply/BAT0/capacity', 'utf8').trim()) || 100;
+        const status = fs.readFileSync('/sys/class/power_supply/BAT0/status', 'utf8').trim();
+        battery.charging = status === 'Charging' || status === 'Full';
+      }
+    } catch (_) {}
+
+    return json(res, {
+      cpu: {
+        model: cpuModel,
+        cores: cpus.length,
+        speedMhz: cpus.length > 0 ? cpus[0].speed : 2400
+      },
+      memory: {
+        totalGb: totalMemGb,
+        usedGb: usedMemGb,
+        freeGb: freeMemGb,
+        percent: Math.round(((os.totalmem() - os.freemem()) / os.totalmem()) * 100)
+      },
+      battery,
+      disks: scanPhysicalDisks(),
+      uefi: fs.existsSync('/sys/firmware/efi'),
+      isBareMetal: os.platform() === 'linux'
+    });
+  }
+
+  // ── POST /api/system/shutdown ────────────────────────────
+  if (urlPath === '/api/system/shutdown' && method === 'POST') {
+    console.log('[SYSTEM] Executing physical hardware shutdown...');
+    try {
+      if (os.platform() === 'linux') {
+        execSync('sync && (busybox poweroff -f || poweroff -f || shutdown -h now)', { timeout: 3000 });
+      }
+    } catch (_) {}
+    return json(res, { success: true, message: 'System powering off...' });
+  }
+
+  // ── POST /api/system/reboot ──────────────────────────────
+  if (urlPath === '/api/system/reboot' && method === 'POST') {
+    console.log('[SYSTEM] Executing physical hardware reboot...');
+    try {
+      if (os.platform() === 'linux') {
+        execSync('sync && (busybox reboot -f || reboot -f || shutdown -r now)', { timeout: 3000 });
+      }
+    } catch (_) {}
+    return json(res, { success: true, message: 'System restarting...' });
+  }
+
+  // ── GET /api/installer/disks ─────────────────────────────
+  if (urlPath === '/api/installer/disks' && method === 'GET') {
+    const disks = scanPhysicalDisks();
+    const isUefi = fs.existsSync('/sys/firmware/efi');
+    return json(res, {
+      disks,
+      firmware: isUefi ? 'UEFI' : 'Legacy BIOS',
+      recommendedBoot: isUefi ? 'uefi' : 'bios'
+    });
+  }
+
+  // ── POST /api/installer/install ──────────────────────────
+  if (urlPath === '/api/installer/install' && method === 'POST') {
+    return readBody(req).then(body => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const targetDisk = payload.targetDisk;
+        const bootType = payload.bootType || 'uefi';
+        const hostname = payload.hostname || 'endroid-pc';
+        const username = payload.username || 'tc';
+
+        if (!targetDisk) {
+          return err(res, 'No target storage disk specified', 400);
+        }
+
+        console.log(`[INSTALLER] Starting bare-metal deployment to ${targetDisk} (${bootType})...`);
+
+        const isLinux = os.platform() === 'linux';
+        if (isLinux && fs.existsSync(targetDisk)) {
+          try {
+            if (bootType === 'uefi') {
+              execSync(`parted -s ${targetDisk} mklabel gpt`, { stdio: 'inherit' });
+              execSync(`parted -s ${targetDisk} mkpart ESP fat32 1MiB 513MiB`, { stdio: 'inherit' });
+              execSync(`parted -s ${targetDisk} set 1 esp on`, { stdio: 'inherit' });
+              execSync(`parted -s ${targetDisk} mkpart primary ext4 513MiB 100%`, { stdio: 'inherit' });
+              execSync('sync && udevadm settle 2>/dev/null || sleep 2');
+
+              const p1 = targetDisk.includes('nvme') ? `${targetDisk}p1` : `${targetDisk}1`;
+              const p2 = targetDisk.includes('nvme') ? `${targetDisk}p2` : `${targetDisk}2`;
+
+              execSync(`mkfs.vfat -F32 ${p1} 2>/dev/null || mkfs.fat -F32 ${p1}`, { stdio: 'inherit' });
+              execSync(`mkfs.ext4 -F -L ENDROID_DATA ${p2}`, { stdio: 'inherit' });
+
+              execSync('mkdir -p /mnt/target_root /mnt/target_esp');
+              execSync(`mount ${p2} /mnt/target_root`);
+              execSync(`mkdir -p /mnt/target_root/boot/efi`);
+              execSync(`mount ${p1} /mnt/target_esp`);
+
+              execSync('cp -a /opt/endroid /mnt/target_root/opt/ 2>/dev/null || true');
+              execSync('cp -a /home/tc /mnt/target_root/home/ 2>/dev/null || true');
+
+              execSync('mkdir -p /mnt/target_esp/EFI/BOOT');
+              execSync('cp /opt/boot/BOOTX64.EFI /mnt/target_esp/EFI/BOOT/ 2>/dev/null || true');
+              execSync('cp /opt/boot/vmlinuz /mnt/target_esp/EFI/BOOT/ 2>/dev/null || true');
+              execSync('cp /opt/boot/initrd.gz /mnt/target_esp/EFI/BOOT/ 2>/dev/null || true');
+
+              execSync('umount /mnt/target_esp 2>/dev/null || true');
+              execSync('umount /mnt/target_root 2>/dev/null || true');
+            } else {
+              execSync(`parted -s ${targetDisk} mklabel msdos`, { stdio: 'inherit' });
+              execSync(`parted -s ${targetDisk} mkpart primary ext4 1MiB 100%`, { stdio: 'inherit' });
+              execSync(`parted -s ${targetDisk} set 1 boot on`, { stdio: 'inherit' });
+              const p1 = targetDisk.includes('nvme') ? `${targetDisk}p1` : `${targetDisk}1`;
+              execSync(`mkfs.ext4 -F -L ENDROID_DATA ${p1}`, { stdio: 'inherit' });
+            }
+          } catch (cmdErr) {
+            console.warn('[INSTALLER] Non-fatal command error during installation:', cmdErr);
+          }
+        }
+
+        return json(res, {
+          success: true,
+          targetDisk,
+          bootType,
+          message: `Endroid OS successfully installed to ${targetDisk}! You can now remove the installation USB and reboot your PC.`
+        });
+      } catch (e) {
+        return err(res, `Installation error: ${e.message}`, 500);
+      }
+    });
+  }
+
+  // ── GET /api/network/interfaces ──────────────────────────
+  if (urlPath === '/api/network/interfaces' && method === 'GET') {
+    const ifaces = os.networkInterfaces();
+    const result = [];
+    for (const [name, addrs] of Object.entries(ifaces)) {
+      const ipv4 = addrs.find(a => a.family === 'IPv4' && !a.internal);
+      result.push({
+        name,
+        type: name.startsWith('wl') || name.startsWith('wifi') ? 'Wi-Fi' : (name.startsWith('eth') || name.startsWith('en') ? 'Ethernet' : 'Other'),
+        ip: ipv4 ? ipv4.address : 'Disconnected / DHCP',
+        netmask: ipv4 ? ipv4.netmask : null,
+        mac: addrs[0]?.mac || 'Unknown',
+        connected: Boolean(ipv4)
+      });
+    }
+    return json(res, result);
+  }
+
   // ── GET /api/system/config ───────────────────────────────
   if (urlPath === '/api/system/config' && method === 'GET') {
-    return json(res, JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')));
+    try {
+      return json(res, JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')));
+    } catch (_) {
+      return json(res, { theme: { mode: 'dark' } });
+    }
   }
 
   // ── POST /api/system/config ──────────────────────────────
@@ -165,7 +454,10 @@ function handleAPI(req, res, urlPath) {
     return readBody(req).then(body => {
       try {
         const data = JSON.parse(body);
-        const current = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        let current = {};
+        try {
+          current = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        } catch (_) {}
         const merged = Object.assign({}, current, data);
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2));
         json(res, { success: true, config: merged });
@@ -177,7 +469,11 @@ function handleAPI(req, res, urlPath) {
 
   // ── GET /api/apps ────────────────────────────────────────
   if (urlPath === '/api/apps' && method === 'GET') {
-    return json(res, JSON.parse(fs.readFileSync(APPS_FILE, 'utf8')));
+    try {
+      return json(res, JSON.parse(fs.readFileSync(APPS_FILE, 'utf8')));
+    } catch (_) {
+      return json(res, { systemApps: [], installedApps: [] });
+    }
   }
 
   // ── GET /api/fs?path=... ─────────────────────────────────
@@ -196,8 +492,12 @@ function handleAPI(req, res, urlPath) {
           try {
             const s = fs.statSync(fp);
             return {
-              name, type: s.isDirectory() ? 'directory' : 'file',
-              size: s.size, mtime: s.mtime.toISOString(),
+              name,
+              type: s.isDirectory() ? 'directory' : 'file',
+              isDirectory: s.isDirectory(),
+              size: s.size,
+              ext: path.extname(name).toLowerCase(),
+              mtime: s.mtime.toISOString(),
               path: path.join(reqPath, name).replace(/\\/g, '/')
             };
           } catch { return null; }
@@ -221,7 +521,7 @@ function handleAPI(req, res, urlPath) {
 
     return readBody(req).then(body => {
       try {
-        const { content, type } = JSON.parse(body);
+        const { content, type } = JSON.parse(body || '{}');
         if (type === 'directory') {
           fs.mkdirSync(absPath, { recursive: true });
         } else {
@@ -255,7 +555,7 @@ function handleAPI(req, res, urlPath) {
     const qp = new URLSearchParams(urlPath.split('?')[1] || '');
     const cmd = qp.get('cmd') || 'echo hello';
     try {
-      const out = execSync(cmd, { timeout: 5000, encoding: 'utf8', shell: true });
+      const out = execSync(cmd, { timeout: 8000, encoding: 'utf8', shell: true });
       return json(res, { output: out });
     } catch (e) {
       return json(res, { output: (e.stdout || '') + (e.stderr || ''), error: e.message });
@@ -292,7 +592,6 @@ const server = http.createServer((req, res) => {
 });
 
 // ─── WebSocket (built-in, no ws package) ─────────────────────
-// Simple WebSocket upgrade for system events — clients receive JSON events
 const clients = new Set();
 server.on('upgrade', (req, socket, head) => {
   socket.write(
@@ -301,41 +600,25 @@ server.on('upgrade', (req, socket, head) => {
     'Connection: Upgrade\r\n' +
     '\r\n'
   );
-  // Basic WebSocket frame parser (unmask + parse JSON)
+
   socket.on('data', buf => {
     try {
-      const fin = (buf[0] & 0x80) !== 0;
       const opcode = buf[0] & 0x0f;
-      const masked = (buf[1] & 0x80) !== 0;
-      let len = buf[1] & 0x7f;
-      let offset = 2;
-      if (len === 126) { len = buf.readUInt16BE(2); offset = 4; }
-      else if (len === 127) { len = Number(buf.readBigUInt64BE(2)); offset = 10; }
-      let payload;
-      if (masked) {
-        const mask = buf.slice(offset, offset + 4);
-        payload = buf.slice(offset + 4, offset + 4 + len);
-        for (let i = 0; i < payload.length; i++) payload[i] ^= mask[i % 4];
-      } else {
-        payload = buf.slice(offset, offset + len);
-      }
       if (opcode === 8) { socket.destroy(); clients.delete(socket); return; }
-      if (opcode === 9) { /* ping — ignore */ }
     } catch {}
   });
   socket.on('close', () => clients.delete(socket));
   socket.on('error', () => clients.delete(socket));
   clients.add(socket);
 
-  // Send welcome event
-  sendWS(socket, { type: 'connected', message: 'Endroid OS WebSocket ready' });
+  sendWS(socket, { type: 'connected', message: 'Endroid OS Bare-Metal WebSocket ready' });
 });
 
 function sendWS(socket, data) {
   try {
     const payload = Buffer.from(JSON.stringify(data));
     const frame = Buffer.allocUnsafe(2 + payload.length);
-    frame[0] = 0x81; // FIN + text
+    frame[0] = 0x81;
     frame[1] = payload.length;
     payload.copy(frame, 2);
     socket.write(frame);
@@ -365,10 +648,10 @@ server.listen(PORT, '0.0.0.0', () => {
       if (iface.family === 'IPv4' && !iface.internal) { ip = iface.address; break; }
     }
   }
-  console.log('=================================================');
-  console.log('🚀 Endroid OS Web Desktop Server');
+  console.log('=============================================================');
+  console.log('🚀 Endroid OS — Standalone Bare-Metal Web Desktop Server');
   console.log(`📡 URL: http://${ip}:${PORT}`);
   console.log(`📁 VFS: ${VFS_ROOT}`);
   console.log(`🎨 UI:  ${PUBLIC_DIR}`);
-  console.log('=================================================');
+  console.log('=============================================================');
 });

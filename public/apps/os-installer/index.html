@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install Endroid OS</title>
+  <link rel="stylesheet" href="../../css/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="installer-window">
+    <!-- Sidebar / Step Tracker -->
+    <div class="installer-sidebar">
+      <div class="brand-section">
+        <div class="brand-logo">
+          <i data-lucide="cpu" style="width:24px;height:24px;color:var(--accent);"></i>
+        </div>
+        <div>
+          <div class="brand-title">Endroid OS</div>
+          <div class="brand-sub">Bare-Metal Installer</div>
+        </div>
+      </div>
+
+      <nav class="steps-nav">
+        <div class="step-item active" id="nav-step-1">
+          <div class="step-num">1</div>
+          <div class="step-info">
+            <span class="step-name">Hardware Check</span>
+            <span class="step-desc">System specs</span>
+          </div>
+        </div>
+
+        <div class="step-item" id="nav-step-2">
+          <div class="step-num">2</div>
+          <div class="step-info">
+            <span class="step-name">Select Drive</span>
+            <span class="step-desc">Target SSD / HDD</span>
+          </div>
+        </div>
+
+        <div class="step-item" id="nav-step-3">
+          <div class="step-num">3</div>
+          <div class="step-info">
+            <span class="step-name">System Config</span>
+            <span class="step-desc">PC Name & Boot</span>
+          </div>
+        </div>
+
+        <div class="step-item" id="nav-step-4">
+          <div class="step-num">4</div>
+          <div class="step-info">
+            <span class="step-name">Installation</span>
+            <span class="step-desc">Write to disk</span>
+          </div>
+        </div>
+
+        <div class="step-item" id="nav-step-5">
+          <div class="step-num">5</div>
+          <div class="step-info">
+            <span class="step-name">Complete</span>
+            <span class="step-desc">Reboot to OS</span>
+          </div>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="badge-pill">
+          <i data-lucide="shield-check" style="width:12px;height:12px;"></i>
+          <span>Native x86_64 OS</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="installer-content">
+      <!-- Step 1: System Check -->
+      <div class="step-view active" id="view-step-1">
+        <div class="view-header">
+          <h2>Welcome to Endroid OS</h2>
+          <p>Install Endroid OS as the primary, standalone operating system directly on your PC hardware.</p>
+        </div>
+
+        <div class="specs-grid">
+          <div class="spec-card">
+            <i data-lucide="cpu" class="spec-icon"></i>
+            <div>
+              <div class="spec-label">Processor</div>
+              <div class="spec-value" id="spec-cpu">Scanning...</div>
+            </div>
+          </div>
+
+          <div class="spec-card">
+            <i data-lucide="activity" class="spec-icon"></i>
+            <div>
+              <div class="spec-label">System Memory</div>
+              <div class="spec-value" id="spec-ram">Scanning...</div>
+            </div>
+          </div>
+
+          <div class="spec-card">
+            <i data-lucide="hard-drive" class="spec-icon"></i>
+            <div>
+              <div class="spec-label">Storage Controller</div>
+              <div class="spec-value" id="spec-storage">NVMe / SATA Ready</div>
+            </div>
+          </div>
+
+          <div class="spec-card">
+            <i data-lucide="zap" class="spec-icon"></i>
+            <div>
+              <div class="spec-label">Firmware Mode</div>
+              <div class="spec-value" id="spec-firmware">UEFI (GPT) Supported</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-banner">
+          <i data-lucide="info" style="width:18px;height:18px;color:var(--accent);"></i>
+          <div>
+            <strong>Self-Contained Operating System</strong>
+            <p>Endroid OS runs directly on physical PC hardware without requiring any host operating system or external software. All user documents and system settings will be saved persistently.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Target Drive -->
+      <div class="step-view" id="view-step-2">
+        <div class="view-header">
+          <h2>Select Target Storage Drive</h2>
+          <p>Choose the internal SSD or Hard Drive where Endroid OS will be installed.</p>
+        </div>
+
+        <div class="disk-list" id="disk-list">
+          <div class="disk-loading">
+            <i data-lucide="loader" class="spin"></i>
+            <span>Scanning for physical drives...</span>
+          </div>
+        </div>
+
+        <div class="danger-banner">
+          <i data-lucide="alert-triangle" style="width:20px;height:20px;color:#ef4444;flex-shrink:0;"></i>
+          <div>
+            <strong>Warning: Data will be replaced</strong>
+            <p>The installer will format the selected drive with an EFI System Partition and Ext4 Endroid OS root filesystem. Back up any existing files on that drive before proceeding.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: System Config -->
+      <div class="step-view" id="view-step-3">
+        <div class="view-header">
+          <h2>System Configuration</h2>
+          <p>Configure computer identification and bootloader options.</p>
+        </div>
+
+        <div class="form-group">
+          <label>Computer Name (Hostname)</label>
+          <input type="text" id="cfg-hostname" class="input-field" value="endroid-pc" placeholder="e.g. endroid-laptop">
+        </div>
+
+        <div class="form-group">
+          <label>Primary User Account</label>
+          <input type="text" id="cfg-username" class="input-field" value="user" placeholder="e.g. user">
+        </div>
+
+        <div class="form-group">
+          <label>Bootloader Type</label>
+          <div class="radio-row">
+            <label class="radio-card">
+              <input type="radio" name="boot-type" value="uefi" checked>
+              <div class="radio-content">
+                <strong>UEFI Boot (Recommended)</strong>
+                <span>Creates GPT with EFI System Partition (FAT32) for modern PC hardware</span>
+              </div>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="boot-type" value="bios">
+              <div class="radio-content">
+                <strong>Legacy BIOS / MBR</strong>
+                <span>For older legacy computers and classic BIOS systems</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="cfg-persist" checked>
+            <span>Enable persistent data storage on internal drive (`/dev/disk/by-label/ENDROID_DATA`)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 4: Installation Progress -->
+      <div class="step-view" id="view-step-4">
+        <div class="view-header">
+          <h2>Installing Endroid OS to PC...</h2>
+          <p>Please do not disconnect power or unplug media while installation is in progress.</p>
+        </div>
+
+        <div class="install-progress-card">
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="install-progress-bar" style="width: 10%;"></div>
+          </div>
+          <div class="progress-status-row">
+            <span id="install-status-text">Preparing storage disk...</span>
+            <span id="install-percent-text">10%</span>
+          </div>
+        </div>
+
+        <div class="stages-checklist">
+          <div class="stage-row active" id="stage-part">
+            <i data-lucide="check-circle" class="stage-icon"></i>
+            <span>Partitioning drive with GPT & EFI System Partition</span>
+          </div>
+          <div class="stage-row" id="stage-format">
+            <i data-lucide="circle" class="stage-icon"></i>
+            <span>Formatting Ext4 root filesystem & FAT32 ESP</span>
+          </div>
+          <div class="stage-row" id="stage-core">
+            <i data-lucide="circle" class="stage-icon"></i>
+            <span>Deploying Linux 64-bit kernel & initramfs</span>
+          </div>
+          <div class="stage-row" id="stage-system">
+            <i data-lucide="circle" class="stage-icon"></i>
+            <span>Deploying Endroid OS runtime, Web Desktop & offline apps</span>
+          </div>
+          <div class="stage-row" id="stage-boot">
+            <i data-lucide="circle" class="stage-icon"></i>
+            <span>Configuring bootloader & persistence mount points</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5: Completed -->
+      <div class="step-view" id="view-step-5">
+        <div class="complete-hero">
+          <div class="complete-icon-wrap">
+            <i data-lucide="check" style="width:36px;height:36px;color:#10b981;"></i>
+          </div>
+          <h2>Installation Complete!</h2>
+          <p>Endroid OS has been successfully installed on your internal PC drive.</p>
+          <div class="complete-box">
+            <div><strong>Target Drive:</strong> <span id="final-disk">/dev/sda</span></div>
+            <div><strong>Mode:</strong> Standalone Bare-Metal OS</div>
+            <div><strong>Persistence:</strong> Active</div>
+          </div>
+          <p style="color:var(--text-secondary); font-size:13px; margin-top:12px;">
+            Remove the live installation USB and click <strong>Reboot PC</strong> to boot directly into Endroid OS.
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Button Bar -->
+      <div class="installer-actions">
+        <button class="btn btn-secondary" id="btn-back" disabled>Back</button>
+        <div style="flex:1;"></div>
+        <button class="btn btn-primary" id="btn-next">Next</button>
+        <button class="btn btn-success" id="btn-reboot" style="display:none;">Reboot PC</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../js/lucide.min.js"></script>
+  <script src="../../js/icons.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="installer.js"></script>
+</body>
+</html>

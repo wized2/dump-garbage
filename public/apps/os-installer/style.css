@@ -1,0 +1,527 @@
+/* Endroid OS Bare-Metal Installer Stylesheet */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-base, #0b0f19);
+  color: var(--text-primary, #f8fafc);
+  user-select: none;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.installer-window {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Sidebar */
+.installer-sidebar {
+  width: 240px;
+  background: var(--bg-surface, #111827);
+  border-right: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  gap: 24px;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md, 8px);
+  background: rgba(14, 165, 233, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+}
+
+.brand-sub {
+  font-size: 11px;
+  color: var(--accent, #0ea5e9);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.steps-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md, 8px);
+  color: var(--text-muted, #94a3b8);
+  transition: all 0.2s ease;
+}
+
+.step-item.active {
+  background: rgba(14, 165, 233, 0.15);
+  color: var(--text-primary, #fff);
+}
+
+.step-item.completed {
+  color: #10b981;
+}
+
+.step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.step-item.active .step-num {
+  background: var(--accent, #0ea5e9);
+  color: #fff;
+}
+
+.step-item.completed .step-num {
+  background: #10b981;
+  color: #fff;
+}
+
+.step-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.step-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.step-desc {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  color: var(--text-secondary, #cbd5e1);
+}
+
+/* Main Content */
+.installer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 40px 24px 40px;
+  background: var(--bg-base, #0b0f19);
+  overflow-y: auto;
+}
+
+.step-view {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.step-view.active {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.view-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.view-header p {
+  font-size: 13.5px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* Hardware Specs Grid */
+.specs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.spec-card {
+  background: var(--bg-surface, #111827);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-md, 10px);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.spec-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--accent, #0ea5e9);
+}
+
+.spec-label {
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.spec-value {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 2px;
+  color: var(--text-primary, #fff);
+}
+
+/* Disks List */
+.disk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.disk-card {
+  background: var(--bg-surface, #111827);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md, 10px);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.disk-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.disk-card.selected {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: var(--accent, #0ea5e9);
+}
+
+.disk-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.disk-card.selected .disk-icon {
+  color: var(--accent, #0ea5e9);
+}
+
+.disk-details {
+  flex: 1;
+}
+
+.disk-name {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.disk-sub {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  margin-top: 2px;
+}
+
+.disk-badge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary, #fff);
+}
+
+/* Form Styles */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.input-field {
+  background: var(--bg-surface, #111827);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-field:focus {
+  border-color: var(--accent, #0ea5e9);
+}
+
+.radio-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.radio-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--bg-surface, #111827);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.radio-card input {
+  margin-top: 3px;
+}
+
+.radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.radio-content strong {
+  font-size: 13.5px;
+}
+
+.radio-content span {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Banners */
+.info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 12.5px;
+}
+
+.danger-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 12.5px;
+}
+
+/* Progress Screen */
+.install-progress-card {
+  background: var(--bg-surface, #111827);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  transition: width 0.4s ease;
+}
+
+.progress-status-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stages-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}
+
+.stage-row.active {
+  color: var(--accent, #0ea5e9);
+  font-weight: 600;
+}
+
+.stage-row.done {
+  color: #10b981;
+}
+
+.stage-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Completion Screen */
+.complete-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 20px 0;
+}
+
+.complete-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.complete-box {
+  background: var(--bg-surface, #111827);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  text-align: left;
+  min-width: 280px;
+}
+
+/* Action Bar */
+.installer-actions {
+  display: flex;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  margin-top: auto;
+}
+
+.btn {
+  padding: 10px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.btn-primary {
+  background: var(--accent, #0ea5e9);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0284c7;
+}
+
+.btn-success {
+  background: #10b981;
+  color: #fff;
+}
+
+.btn-success:hover {
+  background: #059669;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

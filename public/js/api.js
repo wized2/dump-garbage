@@ -192,6 +192,50 @@
         });
         if (!res.ok) throw new Error((await res.json()).error || 'Failed to kill process');
         return await res.json();
+      },
+
+      async hardware() {
+        const res = await fetch('/api/system/hardware');
+        if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch hardware info');
+        return await res.json();
+      },
+
+      async shutdown() {
+        const res = await fetch('/api/system/shutdown', { method: 'POST' });
+        return await res.json();
+      },
+
+      async reboot() {
+        const res = await fetch('/api/system/reboot', { method: 'POST' });
+        return await res.json();
+      }
+    },
+
+    // Bare-Metal OS Installer
+    installer: {
+      async getDisks() {
+        const res = await fetch('/api/installer/disks');
+        if (!res.ok) throw new Error((await res.json()).error || 'Failed to list storage disks');
+        return await res.json();
+      },
+
+      async install(options) {
+        const res = await fetch('/api/installer/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(options)
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Failed to install to disk');
+        return await res.json();
+      }
+    },
+
+    // Network Management
+    network: {
+      async interfaces() {
+        const res = await fetch('/api/network/interfaces');
+        if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch network interfaces');
+        return await res.json();
       }
     }
   };

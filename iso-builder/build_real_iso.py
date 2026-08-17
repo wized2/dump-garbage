@@ -1,43 +1,47 @@
 #!/usr/bin/env python3
 """
-Endroid OS ISO Builder v4
-- Merges overlay directly into TinyCore rootfs (single CPIO stream)
-- Uses TinyCore base, adds Xorg, Openbox, Dillo, BusyBox httpd (no Node.js)
-- Auto‑starts UI via /opt/bootsync.sh (loads extensions, starts httpd, X, Dillo)
-- Uses correct ISOLINUX 6.03 layout with lowercase Rock Ridge names
+Endroid OS — Master Bare-Metal ISO Builder v7 (Complete Graphical Desktop)
+- Fully self-contained, standalone operating system (zero host dependencies).
+- Boots into full graphical Xorg + JWM + Dillo desktop automatically.
+- Bundles 64-bit Linux Node.js runtime and full Endroid Web Desktop server.
+- Supports UEFI (GPT) and Legacy BIOS (MBR) bare-metal booting.
+- Auto-mounts persistent data storage (LABEL=ENDROID_DATA) across reboots.
 """
 
-import os, sys, shutil, gzip, io, struct, tarfile, urllib.request, subprocess
+import os, sys, shutil, gzip, io, struct, tarfile, zipfile, urllib.request
 
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 KERNEL_ASSETS= os.path.join(BASE_DIR, "kernel-assets")
 ISOLINUX_BINS= os.path.join(KERNEL_ASSETS, "isolinux")
+TCE_CACHE    = os.path.join(BASE_DIR, "tce_cache")
 ISO_OUT      = os.path.join(PROJECT_ROOT, "endroid-os-x86_64.iso")
 STAGING_DIR  = os.path.join(BASE_DIR, "iso_staging")
 
-print("=" * 60)
-print("  Endroid OS ISO Builder v4 — TinyCore + X/Openbox/Dillo")
-print("=" * 60)
+print("=" * 65)
+print("  Endroid OS — Master Bare-Metal OS Builder v7")
+print("  Target: Physical PC Hardware (Full GUI Desktop, UEFI + BIOS)")
+print("=" * 65)
 
 # Clean staging area
 if os.path.exists(STAGING_DIR):
     shutil.rmtree(STAGING_DIR)
 os.makedirs(os.path.join(STAGING_DIR, "isolinux"), exist_ok=True)
+os.makedirs(os.path.join(STAGING_DIR, "EFI", "BOOT"), exist_ok=True)
+os.makedirs(os.path.join(STAGING_DIR, "boot"), exist_ok=True)
+os.makedirs(os.path.join(STAGING_DIR, "cce", "optional"), exist_ok=True)
 
 # ---------------------------------------------------------------
-# STEP 1: Extract TinyCore base rootfs into a working directory
+# STEP 1: Extract TinyCore base rootfs
 # ---------------------------------------------------------------
-print("[1/5] Extracting TinyCore base rootfs...")
-TC_ROOTFS = os.path.join(STAGING_DIR, "rootfs")
-os.makedirs(TC_ROOTFS)
+print("[1/5] Extracting base Linux rootfs...")
 base_gz = os.path.join(KERNEL_ASSETS, "corepure64.gz")
 with gzip.open(base_gz, 'rb') as f:
     cpio_data = f.read()
 print(f"  Base CPIO size: {len(cpio_data)/1024/1024:.2f} MB")
 
 def parse_cpio_newc(data):
-    """Parse newc CPIO archive, yield entry tuple preserving all header fields."""
+    """Parse newc CPIO archive, preserving all exact header fields."""
     pos = 0
     entries = []
     while pos < len(data):
@@ -102,233 +106,319 @@ def make_cpio_entry(name, data=b'', mode=0o100755, uid=0, gid=0, nlink=1, mtime=
     return raw
 
 # ---------------------------------------------------------------
-# STEP 2: Build merged CPIO (base + Endroid overlay)
+# STEP 2: Build merged CPIO (Base + Node.js + Endroid OS)
 # ---------------------------------------------------------------
-print("[2/5] Building merged rootfs CPIO (base + Endroid overlay)...")
+print("[2/5] Building merged rootfs CPIO with standalone Node.js and Endroid OS...")
 base_entries = parse_cpio_newc(cpio_data)
 base_names = {e[0] for e in base_entries if e[0] != 'TRAILER!!!'}
 new_cpio = io.BytesIO()
 
-# Write base entries (except trailer) preserving exact device/mode fields
 for name, mode, uid, gid, nlink, mtime, devmajor, devminor, rdevmajor, rdevminor, data in base_entries:
     if name == 'TRAILER!!!':
         continue
     new_cpio.write(make_cpio_entry(name, data, mode, uid, gid, nlink, mtime, devmajor, devminor, rdevmajor, rdevminor))
 
-# Helper functions for overlay injection
-
 def add_dir(name, mode=0o040755):
-    new_cpio.write(make_cpio_entry(name, b'', mode))
+    if name not in base_names:
+        new_cpio.write(make_cpio_entry(name, b'', mode))
+        base_names.add(name)
 
 def add_file(name, data, mode=0o100755):
     new_cpio.write(make_cpio_entry(name, data, mode))
+    base_names.add(name)
 
 def add_text(name, text, mode=0o100644):
     new_cpio.write(make_cpio_entry(name, text.encode('utf-8'), mode))
+    base_names.add(name)
 
-# Create overlay directories
+# Ensure overlay directories
 overlay_dirs = [
-    'opt', 'opt/endroid', 'opt/endroid/public', 'opt/endroid/public/js',
-    'opt/endroid/public/css', 'opt/endroid/public/apps',
-    'opt/endroid/cgi-bin', 'opt/endroid/bin', 'boot', 'boot/tce'
+    'opt', 'opt/endroid', 'opt/endroid/server', 'opt/endroid/public',
+    'opt/endroid/vfs', 'opt/endroid/vfs/home', 'opt/endroid/vfs/home/user',
+    'opt/endroid/vfs/home/user/Desktop', 'opt/endroid/vfs/etc', 'opt/endroid/vfs/etc/endroid',
+    'usr', 'usr/local', 'usr/local/bin', 'lib64', 'boot', 'boot/tce', 'etc/sysconfig', 'var/log', 'mnt/endroid_storage'
 ]
 for d in overlay_dirs:
-    if d not in base_names:
-        add_dir(d)
+    add_dir(d)
 
-# Add static full BusyBox binary to initrd
-bbox_static = os.path.join(BASE_DIR, 'busybox-static')
-if os.path.exists(bbox_static):
-    with open(bbox_static, 'rb') as f:
-        add_file('bin/busybox-full', f.read(), 0o100755)
-    print("  Bundled static full BusyBox into /bin/busybox-full")
+# Extract and bundle standalone 64-bit Node.js binary
+node_tar_path = os.path.join(KERNEL_ASSETS, "node-linux-x64.tar.gz")
+if os.path.exists(node_tar_path):
+    print("  Extracting 64-bit Linux Node.js runtime...")
+    with tarfile.open(node_tar_path, 'r:gz') as tar:
+        for member in tar.getmembers():
+            if member.name.endswith('/bin/node'):
+                f = tar.extractfile(member)
+                node_binary_data = f.read()
+                add_file('usr/local/bin/node', node_binary_data, 0o100755)
+                add_file('bin/node', node_binary_data, 0o100755)
+                print(f"  [OK] Bundled Node.js runtime ({len(node_binary_data)/1024/1024:.2f} MB)")
+                break
+
+# Bundle server, public, and vfs files
+def bundle_directory(src_dir, target_prefix):
+    count = 0
+    for root, dirs, files in os.walk(src_dir):
+        rel_dir = os.path.relpath(root, src_dir).replace('\\', '/')
+        dest_dir = target_prefix if rel_dir == '.' else f"{target_prefix}/{rel_dir}"
+        add_dir(dest_dir)
+        for f in files:
+            full_path = os.path.join(root, f)
+            dest_file = f"{dest_dir}/{f}"
+            try:
+                with open(full_path, 'rb') as fh:
+                    add_file(dest_file, fh.read(), 0o100644)
+                count += 1
+            except Exception as e:
+                print(f"  [SKIP] {dest_file}: {e}")
+    return count
+
+server_count = bundle_directory(os.path.join(PROJECT_ROOT, 'server'), 'opt/endroid/server')
+public_count = bundle_directory(os.path.join(PROJECT_ROOT, 'public'), 'opt/endroid/public')
+vfs_count    = bundle_directory(os.path.join(PROJECT_ROOT, 'vfs'), 'opt/endroid/vfs')
+print(f"  Bundled Endroid OS: {server_count} server files, {public_count} web UI files, {vfs_count} VFS template files.")
+
+# Initial sysconfig for Xorg and desktop
+add_text('etc/sysconfig/Xserver', 'Xorg\n', 0o100644)
+add_text('etc/sysconfig/desktop', 'jwm\n', 0o100644)
 
 # ---------------------------------------------------------------
-# Add bootsync.sh (auto‑start script)
+# Add Bare-Metal bootsync.sh (Startup & Persistence Manager)
 # ---------------------------------------------------------------
 bootsync_sh = """#!/bin/sh
-# Endroid OS bootsync - runs at boot as root
+# Endroid OS Bare-Metal Bootsync — Runs at physical boot as root
 
-# Initialize network loopback & ethernet
+echo "========================================================"
+echo "  Starting Endroid OS Standalone Bare-Metal Runtime"
+echo "========================================================"
+
+# 1. Critical library symlinks for 64-bit glibc binaries (Node.js, Xorg)
+mkdir -p /lib64
+ln -sf /lib/* /lib64/ 2>/dev/null || true
+
+# 2. Hardware device discovery
+mdev -s 2>/dev/null || true
+
+# 3. Network auto-configuration (DHCP loopback + all Ethernet/Wi-Fi)
 ifconfig lo 127.0.0.1 up
-ifconfig eth0 10.0.2.15 netmask 255.255.255.0 up 2>/dev/null
-route add default gw 10.0.2.2 2>/dev/null
-
-# Setup TCEDIR so tce-load can operate properly from RAM
-mkdir -p /tmp/tce/optional
-mkdir -p /etc/sysconfig
-ln -sf /tmp/tce /etc/sysconfig/tcedir
-
-# Copy and load bundled extensions
-for pkg in Xorg-7.7.tcz openbox.tcz dillo.tcz; do
-    if [ -f /opt/tcz/$pkg ]; then
-        cp /opt/tcz/$pkg /tmp/tce/optional/
-        tce-load -i /tmp/tce/optional/$pkg
+for iface in $(ls /sys/class/net/ 2>/dev/null); do
+    if [ "$iface" != "lo" ]; then
+        ifconfig "$iface" up 2>/dev/null || true
+        udhcpc -b -i "$iface" -s /usr/share/udhcpc/default.script 2>/dev/null || true
     fi
 done
 
-# Start BusyBox web server (serving public files & CGI scripts) on ports 8080 and 80
-mkdir -p /opt/endroid/public/cgi-bin
-/bin/busybox-full httpd -p 8080 -h /opt/endroid/public
-/bin/busybox-full httpd -p 80 -h /opt/endroid/public
+# 4. Persistent Data Storage Detection
+mkdir -p /mnt/endroid_storage
+PERSIST_DEV=$(blkid -L ENDROID_DATA 2>/dev/null || blkid | grep 'ENDROID_DATA' | cut -d: -f1 | head -n1)
+if [ -n "$PERSIST_DEV" ]; then
+    echo "[Endroid OS] Found persistent storage on $PERSIST_DEV, mounting..."
+    mount -o rw,noatime "$PERSIST_DEV" /mnt/endroid_storage 2>/dev/null || true
+    if [ -d /mnt/endroid_storage/opt/endroid/vfs ]; then
+        mount --bind /mnt/endroid_storage/opt/endroid/vfs /opt/endroid/vfs 2>/dev/null || true
+    fi
+    if [ -d /mnt/endroid_storage/home/tc ]; then
+        mount --bind /mnt/endroid_storage/home/tc /home/tc 2>/dev/null || true
+    fi
+fi
 
-# Prepare xinitrc for user tc
+# 5. Setup TCEDIR for TinyCore extensions from CD/USB
+mkdir -p /tmp/tce/optional
+mkdir -p /etc/sysconfig
+echo Xorg > /etc/sysconfig/Xserver
+echo jwm > /etc/sysconfig/desktop
+ln -sf /tmp/tce /etc/sysconfig/tcedir
+
+# Mount CDROM to find TCZ packages
+mkdir -p /mnt/sr0
+mount -r /dev/sr0 /mnt/sr0 2>/dev/null || mount -r /dev/cdrom /mnt/sr0 2>/dev/null || true
+
+# Copy all extensions into TCEDIR
+for tcedir in /mnt/sr0/cce/optional /mnt/sr0/tce/optional /cce/optional /opt/tcz; do
+    if [ -d "$tcedir" ]; then
+        cp "$tcedir"/* /tmp/tce/optional/ 2>/dev/null || true
+    fi
+done
+
+# Load complete Xorg and Desktop stack (including Xorg-7.7-bin for startx)
+for pkg in Xorg-jwm-desktop.tcz Xorg-7.7-bin.tcz vesa-Xorg.conf.tcz dillo.tcz; do
+    if [ -f /tmp/tce/optional/$pkg ]; then
+        tce-load -i /tmp/tce/optional/$pkg 2>/dev/null || true
+    fi
+done
+
+# 6. Launch Standalone Endroid Node.js Web Desktop Server
+echo "[Endroid OS] Starting Node.js System Server on port 8080..."
+export PORT=8080
+export NODE_ENV=production
+/usr/local/bin/node /opt/endroid/server/index.js > /var/log/endroid.log 2>&1 &
+
+# 7. Prepare Xinit session for desktop
 mkdir -p /home/tc
 cat > /home/tc/.xinitrc <<'XIEOF'
 #!/bin/sh
-openbox-session &
-sleep 2
 dillo http://127.0.0.1:8080/ &
+jwm
 XIEOF
 chmod +x /home/tc/.xinitrc
-chown tc:staff /home/tc/.xinitrc
+chown -R tc:staff /home/tc 2>/dev/null || true
 
-# Launch graphical desktop
-su tc -c 'startx' &
+# 8. Start graphical environment (startx from Xorg-7.7-bin, fallback to direct xinit)
+if which startx >/dev/null 2>&1; then
+    su tc -c 'startx' >/dev/null 2>&1 &
+elif which xinit >/dev/null 2>&1; then
+    su tc -c 'xinit /home/tc/.xinitrc -- :0 vt7' >/dev/null 2>&1 &
+else
+    Xorg :0 vt7 -config /etc/X11/xorg.conf >/dev/null 2>&1 &
+    sleep 2
+    DISPLAY=:0 su tc -c 'jwm' >/dev/null 2>&1 &
+    DISPLAY=:0 su tc -c 'dillo http://127.0.0.1:8080/' >/dev/null 2>&1 &
+fi
 """
 add_text('opt/bootsync.sh', bootsync_sh, 0o100755)
 
 bootlocal_sh = """#!/bin/sh
-# Endroid OS bootlocal - runs in background after bootsync
-ifconfig lo 127.0.0.1 up
-ifconfig eth0 10.0.2.15 netmask 255.255.255.0 up 2>/dev/null
-route add default gw 10.0.2.2 2>/dev/null
-mkdir -p /opt/endroid/public/cgi-bin
-/bin/busybox-full httpd -p 8080 -h /opt/endroid/public
-/bin/busybox-full httpd -p 80 -h /opt/endroid/public
+# Endroid OS bootlocal — background daemon safeguard
+mkdir -p /lib64
+ln -sf /lib/* /lib64/ 2>/dev/null || true
+if ! pgrep -f "node /opt/endroid/server/index.js" >/dev/null; then
+    PORT=8080 /usr/local/bin/node /opt/endroid/server/index.js > /var/log/endroid.log 2>&1 &
+fi
+if ! pgrep -f "Xorg" >/dev/null; then
+    su tc -c 'startx' >/dev/null 2>&1 &
+fi
 """
 add_text('opt/bootlocal.sh', bootlocal_sh, 0o100755)
 
-# ---------------------------------------------------------------
-# Add httpd.conf configuration for CGI script support
-# ---------------------------------------------------------------
-httpd_conf = """/cgi-bin: /bin/sh
-A:*
+# MOTD
+motd = """
+=============================================================
+  Endroid OS — Standalone Bare-Metal Operating System
+  Kernel: $(uname -r) | Arch: $(uname -m)
+  Web Desktop: http://127.0.0.1:8080/
+=============================================================
 """
-add_text('etc/httpd.conf', httpd_conf, 0o100644)
-
-# ---------------------------------------------------------------
-# Add CGI scripts (simple JSON endpoints inside public/cgi-bin)
-# ---------------------------------------------------------------
-apps_cgi = """#!/bin/sh
-echo "Content-Type: application/json"
-echo
-cat <<'JSON'
-[
-  {"name": "Terminal", "icon": "terminal.svg"},
-  {"name": "Editor",   "icon": "editor.svg"}
-]
-JSON
-"""
-add_text('opt/endroid/public/cgi-bin/apps.sh', apps_cgi, 0o100755)
-
-launch_cgi = """#!/bin/sh
-# Placeholder launch endpoint – just returns OK
-echo "Content-Type: application/json"
-echo
-echo '{"status":"ok"}'
-"""
-add_text('opt/endroid/public/cgi-bin/launch.sh', launch_cgi, 0o100755)
-
-# ---------------------------------------------------------------
-# Add MOTD (simple)
-# ---------------------------------------------------------------
-motd = """\nWelcome to Endroid OS (TinyCore based)\nKernel: $(uname -r)\nWeb Desktop available at http://127.0.0.1/\n"""
 add_text('etc/motd', motd, 0o100644)
 
-# ---------------------------------------------------------------
-# Bundle UI assets (public folder)
-# ---------------------------------------------------------------
-pub_root = os.path.join(PROJECT_ROOT, 'public')
-bundled = 0
-for dirpath, dirnames, filenames in os.walk(pub_root):
-    rel = os.path.relpath(dirpath, PROJECT_ROOT).replace('\\', '/')
-    target_dir = 'opt/endroid/' + rel
-    if target_dir not in base_names:
-        add_dir(target_dir)
-    for fname in filenames:
-        full = os.path.join(dirpath, fname)
-        rel_file = os.path.relpath(full, PROJECT_ROOT).replace('\\', '/')
-        target = 'opt/endroid/' + rel_file
-        try:
-            with open(full, 'rb') as fh:
-                add_file(target, fh.read(), 0o100644)
-            bundled += 1
-        except Exception as e:
-            print(f"  [SKIP] {rel_file}: {e}")
-print(f"  Web assets bundled: {bundled} files")
+# Copy all cached TCE packages into ISO /cce/optional/
+if os.path.exists(TCE_CACHE):
+    tce_files = os.listdir(TCE_CACHE)
+    for tf in tce_files:
+        src = os.path.join(TCE_CACHE, tf)
+        dest = os.path.join(STAGING_DIR, 'cce', 'optional', tf)
+        shutil.copy2(src, dest)
 
-# ---------------------------------------------------------------
-# Download required TinyCore extensions (.tcz) & bundle into initrd
-# ---------------------------------------------------------------
-print("[Downloading TinyCore extensions]")
-pkg_base = "http://tinycorelinux.net/12.x/x86_64/tcz/"
-required_pkgs = ["Xorg-7.7.tcz", "openbox.tcz", "dillo.tcz"]
-add_dir('opt/tcz')
-for pkg in required_pkgs:
-    dest = os.path.join(STAGING_DIR, 'boot', 'tce', pkg)
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
-    if not os.path.exists(dest):
-        try:
-            urllib.request.urlretrieve(pkg_base + pkg, dest)
-            print(f"  Downloaded {pkg}")
-        except Exception as e:
-            print(f"  Failed to download {pkg}: {e}")
-    if os.path.exists(dest):
-        with open(dest, 'rb') as f:
-            add_file(f'opt/tcz/{pkg}', f.read(), 0o100644)
-        print(f"  Bundled {pkg} into initrd /opt/tcz/")
+# Onboot package list for TinyCore
+onboot_lst = """Xorg-jwm-desktop.tcz
+vesa-Xorg.conf.tcz
+dillo.tcz
+"""
+with open(os.path.join(STAGING_DIR, 'cce', 'onboot.lst'), 'w', newline='\n') as f:
+    f.write(onboot_lst)
 
-# ---------------------------------------------------------------
-# CPIO trailer and compress
-# ---------------------------------------------------------------
+# CPIO trailer and compression
 new_cpio.write(make_cpio_entry('TRAILER!!!', b''))
-print("[3/5] Compressing merged initrd.gz...")
+print("[3/5] Compressing bare-metal initrd.gz...")
 initrd_path = os.path.join(STAGING_DIR, 'isolinux', 'initrd.gz')
 with gzip.open(initrd_path, 'wb', compresslevel=6) as gz:
     gz.write(new_cpio.getvalue())
 print(f"  initrd.gz size: {os.path.getsize(initrd_path)/1024/1024:.2f} MB")
 
+# Copy initrd.gz and vmlinuz to boot/
+shutil.copy2(initrd_path, os.path.join(STAGING_DIR, 'boot', 'initrd.gz'))
+shutil.copy2(os.path.join(KERNEL_ASSETS, 'vmlinuz64'), os.path.join(STAGING_DIR, 'boot', 'vmlinuz'))
+
 # ---------------------------------------------------------------
-# STEP 4: Stage kernel + ISOLINUX
+# STEP 4: Stage Dual Bootloaders (BIOS ISOLINUX + UEFI Syslinux/GRUB)
 # ---------------------------------------------------------------
-print("[4/5] Staging kernel + ISOLINUX 6.03...")
+print("[4/5] Staging Dual Bootloaders (UEFI 64-bit + BIOS ISOLINUX)...")
+
+# BIOS ISOLINUX
 shutil.copy2(os.path.join(KERNEL_ASSETS, 'vmlinuz64'), os.path.join(STAGING_DIR, 'isolinux', 'vmlinuz'))
 shutil.copy2(os.path.join(ISOLINUX_BINS, 'isolinux.bin'), os.path.join(STAGING_DIR, 'isolinux', 'isolinux.bin'))
 shutil.copy2(os.path.join(ISOLINUX_BINS, 'ldlinux.c32'), os.path.join(STAGING_DIR, 'isolinux', 'ldlinux.c32'))
-# ISOLINUX config (lowercase filenames)
-cfg = """\
+
+isolinux_cfg = """\
 DEFAULT endroid
 PROMPT 0
 TIMEOUT 30
 
 LABEL endroid
-  LINUX vmlinuz
-  INITRD initrd.gz
-  APPEND loglevel=3 quiet
+  LINUX /boot/vmlinuz
+  INITRD /boot/initrd.gz
+  APPEND quiet loglevel=3 waitusb=5 cce=cce
 """
-cfg_path = os.path.join(STAGING_DIR, 'isolinux', 'isolinux.cfg')
-with open(cfg_path, 'w', newline='\n') as f:
-    f.write(cfg)
-print(f"  vmlinuz size: {os.path.getsize(os.path.join(STAGING_DIR,'isolinux','vmlinuz'))/1024/1024:.2f} MB")
+with open(os.path.join(STAGING_DIR, 'isolinux', 'isolinux.cfg'), 'w', newline='\n') as f:
+    f.write(isolinux_cfg)
+
+# UEFI EFI/BOOT/
+syslinux_zip = os.path.join(KERNEL_ASSETS, 'syslinux.zip')
+if os.path.exists(syslinux_zip):
+    with zipfile.ZipFile(syslinux_zip, 'r') as zf:
+        efi_extracts = {
+            'efi64/efi/syslinux.efi': 'BOOTX64.EFI',
+            'efi64/com32/elflink/ldlinux/ldlinux.e64': 'ldlinux.e64',
+            'efi64/com32/modules/linux.c32': 'linux.c32',
+            'efi64/com32/modules/libutil.c32': 'libutil.c32',
+            'efi64/com32/modules/libcom32.c32': 'libcom32.c32'
+        }
+        for zip_path, out_name in efi_extracts.items():
+            if zip_path in zf.namelist():
+                out_path = os.path.join(STAGING_DIR, 'EFI', 'BOOT', out_name)
+                with open(out_path, 'wb') as of:
+                    of.write(zf.read(zip_path))
+                print(f"  Extracted UEFI component: {out_name}")
+
+efi_cfg = """\
+DEFAULT endroid
+PROMPT 0
+TIMEOUT 30
+
+LABEL endroid
+  LINUX /boot/vmlinuz
+  INITRD /boot/initrd.gz
+  APPEND quiet loglevel=3 waitusb=5 cce=cce
+"""
+with open(os.path.join(STAGING_DIR, 'EFI', 'BOOT', 'syslinux.cfg'), 'w', newline='\n') as f:
+    f.write(efi_cfg)
+
+# GRUB2 config fallback for UEFI
+grub_cfg = """\
+set default=0
+set timeout=3
+
+menuentry "Endroid OS (Standalone Bare-Metal)" {
+    linux /boot/vmlinuz quiet loglevel=3 waitusb=5 cce=cce
+    initrd /boot/initrd.gz
+}
+"""
+with open(os.path.join(STAGING_DIR, 'EFI', 'BOOT', 'grub.cfg'), 'w', newline='\n') as f:
+    f.write(grub_cfg)
 
 # ---------------------------------------------------------------
-# STEP 5: Assemble ISO9660 (El Torito)
+# STEP 5: Assemble Bootable Hybrid ISO9660
 # ---------------------------------------------------------------
 print("[5/5] Assembling bootable ISO9660...")
 import pycdlib
+
 iso = pycdlib.PyCdlib()
-iso.new(interchange_level=1, joliet=3, rock_ridge='1.09', vol_ident='ENDROID_OS')
+iso.new(interchange_level=3, joliet=3, rock_ridge='1.09', vol_ident='ENDROID_OS')
 
-def add_iso_dir(iso_path, rr_name, joliet_path):
-    iso.add_directory(iso_path, rr_name=rr_name, joliet_path=joliet_path)
+def make_iso_8_3(fname):
+    parts = fname.rsplit('.', 1)
+    if len(parts) == 2:
+        base = parts[0].replace('.', '_').replace('-', '_').upper()[:8]
+        ext = parts[1].replace('.', '_').replace('-', '_').upper()[:3]
+        return f"{base}.{ext}"
+    else:
+        base = fname.replace('.', '_').replace('-', '_').upper()[:8]
+        return base
 
-def add_iso_file(src, iso_path, rr_name, joliet_path):
-    iso.add_file(src, iso_path, rr_name=rr_name, joliet_path=joliet_path)
+# Add ISOLINUX (BIOS)
+iso.add_directory('/ISOLINUX', rr_name='isolinux', joliet_path='/isolinux')
+iso.add_file(os.path.join(STAGING_DIR, 'isolinux', 'isolinux.bin'), '/ISOLINUX/ISOLINUX.BIN;1', rr_name='isolinux.bin', joliet_path='/isolinux/isolinux.bin')
 
-add_iso_dir('/ISOLINUX', 'isolinux', '/isolinux')
-# Add isolinux components before El Torito
-add_iso_file(os.path.join(STAGING_DIR, 'isolinux', 'isolinux.bin'), '/ISOLINUX/ISOLINUX.BIN;1', 'isolinux.bin', '/isolinux/isolinux.bin')
+# El Torito BIOS boot catalog
 iso.add_eltorito(
     '/ISOLINUX/ISOLINUX.BIN;1',
     bootcatfile='/ISOLINUX/BOOT.CAT;1',
@@ -338,18 +428,45 @@ iso.add_eltorito(
     media_name='noemul',
     boot_info_table=True
 )
-add_iso_file(os.path.join(STAGING_DIR, 'isolinux', 'ldlinux.c32'), '/ISOLINUX/LDLINUX.C32;1', 'ldlinux.c32', '/isolinux/ldlinux.c32')
-add_iso_file(os.path.join(STAGING_DIR, 'isolinux', 'vmlinuz'), '/ISOLINUX/VMLINUZ;1', 'vmlinuz', '/isolinux/vmlinuz')
-add_iso_file(os.path.join(STAGING_DIR, 'isolinux', 'initrd.gz'), '/ISOLINUX/INITRD.GZ;1', 'initrd.gz', '/isolinux/initrd.gz')
-add_iso_file(cfg_path, '/ISOLINUX/ISOLINUX.CFG;1', 'isolinux.cfg', '/isolinux/isolinux.cfg')
+
+iso.add_file(os.path.join(STAGING_DIR, 'isolinux', 'ldlinux.c32'), '/ISOLINUX/LDLINUX.C32;1', rr_name='ldlinux.c32', joliet_path='/isolinux/ldlinux.c32')
+iso.add_file(os.path.join(STAGING_DIR, 'isolinux', 'isolinux.cfg'), '/ISOLINUX/ISOLINUX.CFG;1', rr_name='isolinux.cfg', joliet_path='/isolinux/isolinux.cfg')
+
+# Add /boot
+iso.add_directory('/BOOT', rr_name='boot', joliet_path='/boot')
+iso.add_file(os.path.join(STAGING_DIR, 'boot', 'vmlinuz'), '/BOOT/VMLINUZ;1', rr_name='vmlinuz', joliet_path='/boot/vmlinuz')
+iso.add_file(os.path.join(STAGING_DIR, 'boot', 'initrd.gz'), '/BOOT/INITRD.GZ;1', rr_name='initrd.gz', joliet_path='/boot/initrd.gz')
+
+# Add /EFI/BOOT (UEFI)
+iso.add_directory('/EFI', rr_name='EFI', joliet_path='/EFI')
+iso.add_directory('/EFI/BOOT', rr_name='BOOT', joliet_path='/EFI/BOOT')
+efi_boot_files = os.listdir(os.path.join(STAGING_DIR, 'EFI', 'BOOT'))
+for ebf in efi_boot_files:
+    fpath = os.path.join(STAGING_DIR, 'EFI', 'BOOT', ebf)
+    iso_name = make_iso_8_3(ebf)
+    iso.add_file(fpath, f'/EFI/BOOT/{iso_name};1', rr_name=ebf, joliet_path=f'/EFI/BOOT/{ebf}')
+
+# Add /cce and /cce/optional with all TCZ packages
+iso.add_directory('/CCE', rr_name='cce', joliet_path='/cce')
+iso.add_file(os.path.join(STAGING_DIR, 'cce', 'onboot.lst'), '/CCE/ONBOOT.LST;1', rr_name='onboot.lst', joliet_path='/cce/onboot.lst')
+iso.add_directory('/CCE/OPTIONAL', rr_name='optional', joliet_path='/cce/optional')
+
+cce_opt_files = os.listdir(os.path.join(STAGING_DIR, 'cce', 'optional'))
+for cf in cce_opt_files:
+    fpath = os.path.join(STAGING_DIR, 'cce', 'optional', cf)
+    iso_name = make_iso_8_3(cf)
+    iso_name_clean = f"{iso_name};1"
+    try:
+        iso.add_file(fpath, f'/CCE/OPTIONAL/{iso_name_clean}', rr_name=cf, joliet_path=f'/cce/optional/{cf}')
+    except Exception:
+        idx = len(cf) % 1000
+        iso.add_file(fpath, f'/CCE/OPTIONAL/P_{idx}_{iso_name_clean}', rr_name=cf, joliet_path=f'/cce/optional/{cf}')
 
 iso.write(ISO_OUT)
 iso.close()
 
 size_mb = os.path.getsize(ISO_OUT) / 1024 / 1024
-print("=" * 60)
-print(f"[OK] ISO built: {ISO_OUT}")
+print("=" * 65)
+print(f"[OK] Full GUI Standalone Bare-Metal ISO Created: {ISO_OUT}")
 print(f"Size: {size_mb:.2f} MB")
-print("=" * 60)
-print("Boot with: powershell -File .\\launch-vm.ps1")
-print("=" * 60)
+print("=" * 65)
