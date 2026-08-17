@@ -222,38 +222,51 @@ if [ -n "$PERSIST_DEV" ]; then
     fi
 fi
 
-# 5. Setup TCEDIR for TinyCore extensions from CD/USB
+# 5. Setup TCEDIR and wait for TinyCore to load extensions
 mkdir -p /tmp/tce/optional
 mkdir -p /etc/sysconfig
 echo Xorg > /etc/sysconfig/Xserver
 echo jwm > /etc/sysconfig/desktop
-ln -sf /tmp/tce /etc/sysconfig/tcedir
+ln -sf /tmp/tce /etc/sysconfig/tcedir 2>/dev/null || true
 
-# Mount CDROM to find TCZ packages
+# Mount CDROM to find TCZ packages (try multiple device names)
 mkdir -p /mnt/sr0
-mount -r /dev/sr0 /mnt/sr0 2>/dev/null || mount -r /dev/cdrom /mnt/sr0 2>/dev/null || true
+for dev in /dev/sr0 /dev/sr1 /dev/cdrom /dev/cd0; do
+    mount -r $dev /mnt/sr0 2>/dev/null && break
+done
 
-# Copy all extensions into TCEDIR
-for tcedir in /mnt/sr0/cce/optional /mnt/sr0/tce/optional /cce/optional /opt/tcz; do
+# Copy all extensions from CD into TCEDIR
+for tcedir in /mnt/sr0/cce/optional /mnt/sr0/tce/optional; do
     if [ -d "$tcedir" ]; then
-        cp "$tcedir"/* /tmp/tce/optional/ 2>/dev/null || true
+        cp "$tcedir"/*.tcz /tmp/tce/optional/ 2>/dev/null || true
+        cp "$tcedir"/*.dep /tmp/tce/optional/ 2>/dev/null || true
     fi
 done
 
-# Load complete Xorg and Desktop stack (including Xorg-7.7-bin for startx)
-for pkg in Xorg-jwm-desktop.tcz Xorg-7.7-bin.tcz vesa-Xorg.conf.tcz dillo.tcz; do
-    if [ -f /tmp/tce/optional/$pkg ]; then
-        tce-load -i /tmp/tce/optional/$pkg 2>/dev/null || true
-    fi
+# Load complete Xorg and Desktop stack
+for pkg in Xorg-jwm-desktop.tcz Xorg-7.7-bin.tcz Xprogs.tcz vesa-Xorg.conf.tcz dillo.tcz; do
+    [ -f /tmp/tce/optional/$pkg ] && tce-load -i /tmp/tce/optional/$pkg 2>/dev/null || true
 done
 
-# 6. Launch Standalone Endroid Node.js Web Desktop Server
-echo "[Endroid OS] Starting Node.js System Server on port 8080..."
-export PORT=8080
-export NODE_ENV=production
-/usr/local/bin/node /opt/endroid/server/index.js > /var/log/endroid.log 2>&1 &
+# NOTE: GUI is started from bootlocal.sh AFTER TinyCore loads TCE extensions
+# bootlocal.sh runs after all onboot.lst packages are installed
+"""
+add_text('opt/bootsync.sh', bootsync_sh, 0o100755)
 
-# 7. Prepare Xinit session for desktop
+bootlocal_sh = """#!/bin/sh
+# Endroid OS bootlocal — runs AFTER all TCE extensions are loaded
+
+# Fix lib64 for 64-bit binaries
+mkdir -p /lib64
+ln -sf /lib/* /lib64/ 2>/dev/null || true
+
+# Start Endroid Node.js server
+if ! pgrep -f "node.*index.js" >/dev/null 2>&1; then
+    export PORT=8080
+    /usr/local/bin/node /opt/endroid/server/index.js > /var/log/endroid.log 2>&1 &
+fi
+
+# Prepare user desktop session
 mkdir -p /home/tc
 cat > /home/tc/.xinitrc <<'XIEOF'
 #!/bin/sh
@@ -263,29 +276,16 @@ XIEOF
 chmod +x /home/tc/.xinitrc
 chown -R tc:staff /home/tc 2>/dev/null || true
 
-# 8. Start graphical environment (startx from Xorg-7.7-bin, fallback to direct xinit)
+# Start graphical environment (runs after all TCE packages loaded)
 if which startx >/dev/null 2>&1; then
     su tc -c 'startx' >/dev/null 2>&1 &
 elif which xinit >/dev/null 2>&1; then
     su tc -c 'xinit /home/tc/.xinitrc -- :0 vt7' >/dev/null 2>&1 &
 else
-    Xorg :0 vt7 -config /etc/X11/xorg.conf >/dev/null 2>&1 &
-    sleep 2
-    DISPLAY=:0 su tc -c 'jwm' >/dev/null 2>&1 &
-    DISPLAY=:0 su tc -c 'dillo http://127.0.0.1:8080/' >/dev/null 2>&1 &
-fi
-"""
-add_text('opt/bootsync.sh', bootsync_sh, 0o100755)
-
-bootlocal_sh = """#!/bin/sh
-# Endroid OS bootlocal — background daemon safeguard
-mkdir -p /lib64
-ln -sf /lib/* /lib64/ 2>/dev/null || true
-if ! pgrep -f "node /opt/endroid/server/index.js" >/dev/null; then
-    PORT=8080 /usr/local/bin/node /opt/endroid/server/index.js > /var/log/endroid.log 2>&1 &
-fi
-if ! pgrep -f "Xorg" >/dev/null; then
-    su tc -c 'startx' >/dev/null 2>&1 &
+    Xorg :0 vt7 -nolisten tcp >/dev/null 2>&1 &
+    sleep 3
+    DISPLAY=:0 jwm >/dev/null 2>&1 &
+    DISPLAY=:0 dillo http://127.0.0.1:8080/ >/dev/null 2>&1 &
 fi
 """
 add_text('opt/bootlocal.sh', bootlocal_sh, 0o100755)
