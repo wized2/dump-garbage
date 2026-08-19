@@ -178,6 +178,37 @@ public_count = bundle_directory(os.path.join(PROJECT_ROOT, 'public'), 'opt/endro
 vfs_count    = bundle_directory(os.path.join(PROJECT_ROOT, 'vfs'), 'opt/endroid/vfs')
 print(f"  Bundled Endroid OS: {server_count} server files, {public_count} web UI files, {vfs_count} VFS template files.")
 
+# Pre-extract all TCE squashfs packages on Windows host → embed binaries directly into CPIO
+print("  Pre-extracting TCE squashfs packages into rootfs...")
+extracted_count = 0
+skipped_dirs = {'opt/tce'}
+if os.path.exists(TCE_CACHE):
+    from PySquashfsImage import SquashFsImage
+    tce_files = [f for f in os.listdir(TCE_CACHE) if f.endswith('.tcz')]
+    for tf in tce_files:
+        fpath = os.path.join(TCE_CACHE, tf)
+        try:
+            with open(fpath, 'rb') as fh:
+                img = SquashFsImage(fh)
+                for item in img.root.riter():
+                    ipath = str(item.path).lstrip('/')
+                    if not ipath:
+                        continue
+                    try:
+                        if item.is_dir:
+                            add_dir(ipath)
+                        elif item.is_file:
+                            data = img.read_file(item.inode)
+                            mode = 0o100755 if (item.mode & 0o111) else 0o100644
+                            if ipath not in base_names:
+                                add_file(ipath, data, mode)
+                            extracted_count += 1
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"  [SKIP] {tf}: {e}")
+    print(f"  Pre-extracted {extracted_count} files from {len(tce_files)} TCE packages into rootfs.")
+
 # Initial sysconfig for Xorg and desktop
 add_text('etc/sysconfig/Xserver', 'Xorg\n', 0o100644)
 add_text('etc/sysconfig/desktop', 'jwm\n', 0o100644)
@@ -186,107 +217,61 @@ add_text('etc/sysconfig/desktop', 'jwm\n', 0o100644)
 # Add Bare-Metal bootsync.sh (Startup & Persistence Manager)
 # ---------------------------------------------------------------
 bootsync_sh = """#!/bin/sh
-# Endroid OS Bare-Metal Bootsync — Runs at physical boot as root
-
-echo "========================================================"
-echo "  Starting Endroid OS Standalone Bare-Metal Runtime"
-echo "========================================================"
-
-# 1. Critical library symlinks for 64-bit glibc binaries (Node.js, Xorg)
 mkdir -p /lib64
 ln -sf /lib/* /lib64/ 2>/dev/null || true
-
-# 2. Hardware device discovery
+ldconfig 2>/dev/null || true
 mdev -s 2>/dev/null || true
-
-# 3. Network auto-configuration (DHCP loopback + all Ethernet/Wi-Fi)
 ifconfig lo 127.0.0.1 up
 for iface in $(ls /sys/class/net/ 2>/dev/null); do
-    if [ "$iface" != "lo" ]; then
-        ifconfig "$iface" up 2>/dev/null || true
-        udhcpc -b -i "$iface" -s /usr/share/udhcpc/default.script 2>/dev/null || true
-    fi
+    [ "$iface" = "lo" ] && continue
+    ifconfig "$iface" up 2>/dev/null || true
+    udhcpc -b -i "$iface" 2>/dev/null || true
 done
-
-# 4. Persistent Data Storage Detection
-mkdir -p /mnt/endroid_storage
-PERSIST_DEV=$(blkid -L ENDROID_DATA 2>/dev/null || blkid | grep 'ENDROID_DATA' | cut -d: -f1 | head -n1)
-if [ -n "$PERSIST_DEV" ]; then
-    echo "[Endroid OS] Found persistent storage on $PERSIST_DEV, mounting..."
-    mount -o rw,noatime "$PERSIST_DEV" /mnt/endroid_storage 2>/dev/null || true
-    if [ -d /mnt/endroid_storage/opt/endroid/vfs ]; then
-        mount --bind /mnt/endroid_storage/opt/endroid/vfs /opt/endroid/vfs 2>/dev/null || true
-    fi
-    if [ -d /mnt/endroid_storage/home/tc ]; then
-        mount --bind /mnt/endroid_storage/home/tc /home/tc 2>/dev/null || true
-    fi
-fi
-
-# 5. Setup TCEDIR and wait for TinyCore to load extensions
-mkdir -p /tmp/tce/optional
-mkdir -p /etc/sysconfig
 echo Xorg > /etc/sysconfig/Xserver
 echo jwm > /etc/sysconfig/desktop
-ln -sf /tmp/tce /etc/sysconfig/tcedir 2>/dev/null || true
-
-# Mount CDROM to find TCZ packages (try multiple device names)
-mkdir -p /mnt/sr0
-for dev in /dev/sr0 /dev/sr1 /dev/cdrom /dev/cd0; do
-    mount -r $dev /mnt/sr0 2>/dev/null && break
-done
-
-# Copy all extensions from CD into TCEDIR
-for tcedir in /mnt/sr0/cce/optional /mnt/sr0/tce/optional; do
-    if [ -d "$tcedir" ]; then
-        cp "$tcedir"/*.tcz /tmp/tce/optional/ 2>/dev/null || true
-        cp "$tcedir"/*.dep /tmp/tce/optional/ 2>/dev/null || true
-    fi
-done
-
-# Load complete Xorg and Desktop stack
-for pkg in Xorg-jwm-desktop.tcz Xorg-7.7-bin.tcz Xprogs.tcz vesa-Xorg.conf.tcz dillo.tcz; do
-    [ -f /tmp/tce/optional/$pkg ] && tce-load -i /tmp/tce/optional/$pkg 2>/dev/null || true
-done
-
-# NOTE: GUI is started from bootlocal.sh AFTER TinyCore loads TCE extensions
-# bootlocal.sh runs after all onboot.lst packages are installed
 """
 add_text('opt/bootsync.sh', bootsync_sh, 0o100755)
 
 bootlocal_sh = """#!/bin/sh
-# Endroid OS bootlocal — runs AFTER all TCE extensions are loaded
-
-# Fix lib64 for 64-bit binaries
 mkdir -p /lib64
 ln -sf /lib/* /lib64/ 2>/dev/null || true
+ldconfig 2>/dev/null || true
 
-# Start Endroid Node.js server
-if ! pgrep -f "node.*index.js" >/dev/null 2>&1; then
-    export PORT=8080
-    /usr/local/bin/node /opt/endroid/server/index.js > /var/log/endroid.log 2>&1 &
-fi
+export PORT=8080
+/usr/local/bin/node /opt/endroid/server/index.js > /var/log/endroid.log 2>&1 &
 
-# Prepare user desktop session
+mkdir -p /etc/X11
+cat > /etc/X11/xorg.conf << 'XEOF'
+Section "Device"
+  Identifier "Card0"
+  Driver "vesa"
+EndSection
+Section "Screen"
+  Identifier "Screen0"
+  Device "Card0"
+  DefaultDepth 16
+EndSection
+Section "ServerFlags"
+  Option "AllowMouseOpenFail" "true"
+  Option "AutoAddDevices" "false"
+EndSection
+XEOF
+
 mkdir -p /home/tc
-cat > /home/tc/.xinitrc <<'XIEOF'
+cat > /home/tc/.xinitrc << 'XIEOF'
 #!/bin/sh
+xsetroot -solid '#1a1a2e'
 dillo http://127.0.0.1:8080/ &
-jwm
+exec jwm
 XIEOF
 chmod +x /home/tc/.xinitrc
 chown -R tc:staff /home/tc 2>/dev/null || true
 
-# Start graphical environment (runs after all TCE packages loaded)
-if which startx >/dev/null 2>&1; then
-    su tc -c 'startx' >/dev/null 2>&1 &
-elif which xinit >/dev/null 2>&1; then
-    su tc -c 'xinit /home/tc/.xinitrc -- :0 vt7' >/dev/null 2>&1 &
-else
-    Xorg :0 vt7 -nolisten tcp >/dev/null 2>&1 &
-    sleep 3
-    DISPLAY=:0 jwm >/dev/null 2>&1 &
-    DISPLAY=:0 dillo http://127.0.0.1:8080/ >/dev/null 2>&1 &
-fi
+sleep 2
+export HOME=/home/tc
+export DISPLAY=:0
+export XAUTHORITY=/home/tc/.Xauthority
+xinit /home/tc/.xinitrc -- :0 -ac vt7 > /tmp/xinit.log 2>&1 &
 """
 add_text('opt/bootlocal.sh', bootlocal_sh, 0o100755)
 
